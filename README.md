@@ -15,3 +15,16 @@ consumer, with SwiftUI-facing design, resources, and components.
 
 The canonical design contract should live in platform-neutral token/resource
 specs, then be implemented or generated into Android and iOS native adapters.
+
+## Resources
+
+Native iOS strings are generated from
+[`RoyalTaxi/yalla-resources`](https://github.com/RoyalTaxi/yalla-resources) into
+`Sources/YallaResourcesIOS/Resources/Localizable.xcstrings`.
+
+Do not edit generated resource files by hand. Change the canonical catalog in
+`yalla-resources`, then run:
+
+```bash
+python3 tools/yalla_resources.py sync --no-cmp --no-android
+```
