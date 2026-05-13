@@ -18,4 +18,16 @@ public enum YallaResourcesIOS {
             comment: comment
         )
     }
+
+    public static func iconURL(_ name: String) -> URL? {
+        let normalizedName = name.hasSuffix(".svg") ? String(name.dropLast(4)) : name
+        return bundle.url(
+            forResource: normalizedName,
+            withExtension: "svg",
+            subdirectory: "Icons"
+        ) ?? bundle.url(
+            forResource: normalizedName,
+            withExtension: "svg"
+        )
+    }
 }

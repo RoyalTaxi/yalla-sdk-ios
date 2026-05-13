@@ -15,4 +15,9 @@ final class YallaSDKIOSTests: XCTestCase {
             )
         )
     }
+
+    func testBundlesGeneratedIcons() {
+        XCTAssertNotNil(YallaResourcesIOS.iconURL("ic_x"))
+        XCTAssertNotNil(YallaResourcesIOS.iconURL("ic_x.svg"))
+    }
 }

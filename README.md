@@ -21,6 +21,8 @@ specs, then be implemented or generated into Android and iOS native adapters.
 Native iOS strings are generated from
 [`RoyalTaxi/yalla-resources`](https://github.com/RoyalTaxi/yalla-resources) into
 `Sources/YallaResourcesIOS/Resources/Localizable.xcstrings`.
+Canonical SVG icons are synced into
+`Sources/YallaResourcesIOS/Resources/Icons`.
 
 Do not edit generated resource files by hand. Change the canonical catalog in
 `yalla-resources`, then run:
