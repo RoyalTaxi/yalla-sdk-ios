@@ -20,4 +20,17 @@ final class YallaSDKIOSTests: XCTestCase {
         XCTAssertNotNil(YallaResourcesIOS.iconURL("ic_x"))
         XCTAssertNotNil(YallaResourcesIOS.iconURL("ic_x.svg"))
     }
+
+    func testBundlesGeneratedAssets() {
+        XCTAssertNotNil(YallaResourcesIOS.drawableURL("img_logo_splash"))
+        XCTAssertNotNil(YallaResourcesIOS.drawableURL("img_logo_splash.png"))
+        XCTAssertNotNil(YallaResourcesIOS.fontURL("inter_regular"))
+        XCTAssertNotNil(YallaResourcesIOS.fontURL("inter_regular.ttf"))
+        XCTAssertNotNil(
+            YallaResourcesIOS.fileURL(
+                "lottie_order_search",
+                withExtension: "json"
+            )
+        )
+    }
 }

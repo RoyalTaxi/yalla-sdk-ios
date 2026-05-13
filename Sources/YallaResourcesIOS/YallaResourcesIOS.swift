@@ -20,14 +20,35 @@ public enum YallaResourcesIOS {
     }
 
     public static func iconURL(_ name: String) -> URL? {
-        let normalizedName = name.hasSuffix(".svg") ? String(name.dropLast(4)) : name
+        resourceURL(name, withExtension: "svg", subdirectory: "Icons")
+    }
+
+    public static func drawableURL(_ name: String) -> URL? {
+        resourceURL(name, withExtension: "png", subdirectory: "Drawables")
+    }
+
+    public static func fontURL(_ name: String) -> URL? {
+        resourceURL(name, withExtension: "ttf", subdirectory: "Fonts")
+    }
+
+    public static func fileURL(_ name: String, withExtension fileExtension: String) -> URL? {
+        resourceURL(name, withExtension: fileExtension, subdirectory: "Files")
+    }
+
+    private static func resourceURL(
+        _ name: String,
+        withExtension fileExtension: String,
+        subdirectory: String
+    ) -> URL? {
+        let suffix = ".\(fileExtension)"
+        let normalizedName = name.hasSuffix(suffix) ? String(name.dropLast(suffix.count)) : name
         return bundle.url(
             forResource: normalizedName,
-            withExtension: "svg",
-            subdirectory: "Icons"
+            withExtension: fileExtension,
+            subdirectory: subdirectory
         ) ?? bundle.url(
             forResource: normalizedName,
-            withExtension: "svg"
+            withExtension: fileExtension
         )
     }
 }

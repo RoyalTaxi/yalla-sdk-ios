@@ -23,8 +23,12 @@ Native iOS strings are generated from
 `Sources/YallaResourcesIOS/Resources/Localizable.xcstrings`.
 Canonical SVG icons are synced into
 `Sources/YallaResourcesIOS/Resources/Icons`.
+PNG images, fonts, and JSON files are synced into
+`Sources/YallaResourcesIOS/Resources/Drawables`,
+`Sources/YallaResourcesIOS/Resources/Fonts`, and
+`Sources/YallaResourcesIOS/Resources/Files`.
 
-Do not edit generated resource files by hand. Change the canonical catalog in
+Do not edit generated resource files by hand. Change the canonical source in
 `yalla-resources`, then run:
 
 ```bash

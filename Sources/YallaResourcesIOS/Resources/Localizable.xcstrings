@@ -13,6 +13,18 @@
       },
       "shouldTranslate": false
     },
+    "sdk_android_module_name": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "YallaSDKAndroid"
+          }
+        }
+      },
+      "shouldTranslate": false
+    },
     "language_english": {
       "extractionState": "manual",
       "localizations": {
