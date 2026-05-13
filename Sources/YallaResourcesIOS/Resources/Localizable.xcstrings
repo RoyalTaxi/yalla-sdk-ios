@@ -163,7 +163,7 @@
         "uz-Latn": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ %"
+            "value": "%1$@ %%"
           }
         }
       },
@@ -842,25 +842,25 @@
         "uz-Latn": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@% gacha"
+            "value": "%1$@%% gacha"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Up to %1$@%"
+            "value": "Up to %1$@%%"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "До %1$@%"
+            "value": "До %1$@%%"
           }
         },
         "uz-Cyrl": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@% гача"
+            "value": "%1$@%% гача"
           }
         }
       }
