@@ -1,0 +1,13 @@
+{
+  "info": {
+    "author": "xcode",
+    "version": 1
+  },
+  "images": [
+    {
+      "idiom": "universal",
+      "filename": "ic_card_bonus.svg",
+      "preserves-vector-data": true
+    }
+  ]
+}

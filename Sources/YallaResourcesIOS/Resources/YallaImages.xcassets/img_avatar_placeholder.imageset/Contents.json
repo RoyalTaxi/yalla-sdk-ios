@@ -6,8 +6,7 @@
   "images": [
     {
       "idiom": "universal",
-      "filename": "img_avatar_placeholder.png",
-      "scale": "1x"
+      "filename": "img_avatar_placeholder.png"
     }
   ]
 }

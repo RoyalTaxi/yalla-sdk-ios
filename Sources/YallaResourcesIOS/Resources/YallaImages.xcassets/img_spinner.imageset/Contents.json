@@ -6,8 +6,7 @@
   "images": [
     {
       "idiom": "universal",
-      "filename": "img_spinner.png",
-      "scale": "1x"
+      "filename": "img_spinner.png"
     }
   ]
 }

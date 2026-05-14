@@ -6,8 +6,7 @@
   "images": [
     {
       "idiom": "universal",
-      "filename": "img_upload_photo.png",
-      "scale": "1x"
+      "filename": "img_upload_photo.png"
     }
   ]
 }

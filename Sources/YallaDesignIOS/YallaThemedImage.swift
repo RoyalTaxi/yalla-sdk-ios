@@ -24,30 +24,18 @@ public enum YallaThemedImage: String, CaseIterable, Sendable {
 
     public var assetName: String {
         switch self {
-        case .blurryLogo:
-            return "yalla_img_blurry_logo"
-        case .closeCircle:
-            return "yalla_img_close_circle"
-        case .login:
-            return "yalla_img_login"
-        case .logout:
-            return "yalla_img_logout"
-        case .mapPin:
-            return "yalla_img_map_pin"
-        case .notificationMute:
-            return "yalla_img_notification_mute"
-        case .orderHistory:
-            return "yalla_img_order_history"
-        case .orderSearch:
-            return "yalla_img_order_search"
-        case .safety:
-            return "yalla_img_safety"
-        case .shieldCheck:
-            return "yalla_img_shield_check"
-        case .tariffCard:
-            return "yalla_img_tariff_card"
-        case .trashCan:
-            return "yalla_img_trash_can"
+        case .blurryLogo: return "img_blurry_logo"
+        case .closeCircle: return "img_close_circle"
+        case .login: return "img_login"
+        case .logout: return "img_logout"
+        case .mapPin: return "img_map_pin"
+        case .notificationMute: return "img_notification_mute"
+        case .orderHistory: return "img_order_history"
+        case .orderSearch: return "img_order_search"
+        case .safety: return "img_safety"
+        case .shieldCheck: return "img_shield_check"
+        case .tariffCard: return "img_tariff_card"
+        case .trashCan: return "img_trash_can"
         }
     }
 

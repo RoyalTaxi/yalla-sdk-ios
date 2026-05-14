@@ -29,6 +29,10 @@ public enum YallaResourcesIOS {
         stripExtension(name, extension: "png")
     }
 
+    public static func iconAssetName(_ name: String) -> String {
+        stripExtension(name, extension: "svg")
+    }
+
     #if canImport(UIKit)
     public static func platformImage(
         _ name: String,
@@ -40,9 +44,24 @@ public enum YallaResourcesIOS {
             compatibleWith: traitCollection
         )
     }
+
+    public static func platformIcon(
+        _ name: String,
+        compatibleWith traitCollection: UITraitCollection? = nil
+    ) -> UIImage? {
+        UIImage(
+            named: iconAssetName(name),
+            in: bundle,
+            compatibleWith: traitCollection
+        )
+    }
     #elseif canImport(AppKit)
     public static func platformImage(_ name: String) -> NSImage? {
         bundle.image(forResource: NSImage.Name(imageAssetName(name)))
+    }
+
+    public static func platformIcon(_ name: String) -> NSImage? {
+        bundle.image(forResource: NSImage.Name(iconAssetName(name)))
     }
     #endif
 
@@ -51,8 +70,9 @@ public enum YallaResourcesIOS {
         Image(imageAssetName(name), bundle: bundle)
     }
 
-    public static func iconURL(_ name: String) -> URL? {
-        resourceURL(name, withExtension: "svg", subdirectory: "Icons")
+    @available(iOS 13.0, macOS 10.15, *)
+    public static func swiftUIIcon(_ name: String) -> Image {
+        Image(iconAssetName(name), bundle: bundle)
     }
 
     public static func fontURL(_ name: String) -> URL? {

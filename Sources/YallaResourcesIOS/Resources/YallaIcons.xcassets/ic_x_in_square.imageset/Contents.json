@@ -1,0 +1,13 @@
+{
+  "info": {
+    "author": "xcode",
+    "version": 1
+  },
+  "images": [
+    {
+      "idiom": "universal",
+      "filename": "ic_x_in_square.svg",
+      "preserves-vector-data": true
+    }
+  ]
+}

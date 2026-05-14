@@ -1,0 +1,22 @@
+{
+  "info": {
+    "author": "xcode",
+    "version": 1
+  },
+  "images": [
+    {
+      "idiom": "universal",
+      "filename": "img_light_order_search.png"
+    },
+    {
+      "idiom": "universal",
+      "filename": "img_dark_order_search.png",
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ]
+    }
+  ]
+}

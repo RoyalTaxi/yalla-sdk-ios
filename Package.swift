@@ -11,10 +11,6 @@ let package = Package(
     ],
     products: [
         .library(
-            name: "YallaSDKIOS",
-            targets: ["YallaSDKIOS"]
-        ),
-        .library(
             name: "YallaResourcesIOS",
             targets: ["YallaResourcesIOS"]
         ),
@@ -24,11 +20,6 @@ let package = Package(
         )
     ],
     targets: [
-        .target(
-            name: "YallaSDKIOS",
-            dependencies: ["YallaResourcesIOS", "YallaDesignIOS"],
-            path: "Sources/YallaSDKIOS"
-        ),
         .target(
             name: "YallaDesignIOS",
             dependencies: ["YallaResourcesIOS"],
@@ -40,11 +31,6 @@ let package = Package(
             resources: [
                 .process("Resources")
             ]
-        ),
-        .testTarget(
-            name: "YallaSDKIOSTests",
-            dependencies: ["YallaSDKIOS", "YallaResourcesIOS", "YallaDesignIOS"],
-            path: "Tests/YallaSDKIOSTests"
         )
     ]
 )

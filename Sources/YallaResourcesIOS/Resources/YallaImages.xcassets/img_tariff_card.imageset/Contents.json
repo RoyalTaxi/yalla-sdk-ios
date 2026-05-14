@@ -1,0 +1,22 @@
+{
+  "info": {
+    "author": "xcode",
+    "version": 1
+  },
+  "images": [
+    {
+      "idiom": "universal",
+      "filename": "img_light_tariff_card.png"
+    },
+    {
+      "idiom": "universal",
+      "filename": "img_dark_tariff_card.png",
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ]
+    }
+  ]
+}

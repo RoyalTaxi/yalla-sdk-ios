@@ -1,0 +1,22 @@
+{
+  "info": {
+    "author": "xcode",
+    "version": 1
+  },
+  "images": [
+    {
+      "idiom": "universal",
+      "filename": "img_light_blurry_logo.png"
+    },
+    {
+      "idiom": "universal",
+      "filename": "img_dark_blurry_logo.png",
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ]
+    }
+  ]
+}
