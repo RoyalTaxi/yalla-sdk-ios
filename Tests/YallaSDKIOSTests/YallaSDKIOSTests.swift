@@ -23,8 +23,8 @@ final class YallaSDKIOSTests: XCTestCase {
     }
 
     func testBundlesGeneratedAssets() {
-        XCTAssertNotNil(YallaResourcesIOS.drawableURL("img_logo_splash"))
-        XCTAssertNotNil(YallaResourcesIOS.drawableURL("img_logo_splash.png"))
+        XCTAssertEqual(YallaResourcesIOS.imageAssetName("img_logo_splash.png"), "img_logo_splash")
+        XCTAssertNotNil(YallaResourcesIOS.platformImage("img_logo_splash"))
         XCTAssertNotNil(YallaResourcesIOS.fontURL("inter_regular"))
         XCTAssertNotNil(YallaResourcesIOS.fontURL("inter_regular.ttf"))
         XCTAssertNotNil(
@@ -36,8 +36,14 @@ final class YallaSDKIOSTests: XCTestCase {
     }
 
     func testGeneratedDesignAccessors() {
-        XCTAssertEqual(YallaThemedImage.login.lightResourceName, "img_light_login")
-        XCTAssertEqual(YallaThemedImage.login.darkResourceName, "img_dark_login")
+        XCTAssertEqual(YallaThemedImage.login.assetName, "yalla_img_login")
+        XCTAssertNotNil(
+            YallaResourcesIOS.bundle.url(
+                forResource: "Contents",
+                withExtension: "json",
+                subdirectory: "YallaImages.xcassets/yalla_img_login.imageset"
+            )
+        )
         XCTAssertEqual(YallaTypography.Body.Base.regular.fontResourceName, "sfpro_normal")
         XCTAssertEqual(YallaTypography.Custom.carNumber.fontResourceName, "nummernschild")
     }

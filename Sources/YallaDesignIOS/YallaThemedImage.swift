@@ -1,15 +1,8 @@
 import SwiftUI
 #if canImport(UIKit)
 import UIKit
-public typealias YallaInterfaceStyle = UIUserInterfaceStyle
-public typealias YallaNativeImage = UIImage
 #elseif canImport(AppKit)
 import AppKit
-public enum YallaInterfaceStyle: Sendable {
-    case light
-    case dark
-}
-public typealias YallaNativeImage = NSImage
 #endif
 import YallaResourcesIOS
 
@@ -29,98 +22,47 @@ public enum YallaThemedImage: String, CaseIterable, Sendable {
     case tariffCard = "TariffCard"
     case trashCan = "TrashCan"
 
-    public var lightResourceName: String {
+    public var assetName: String {
         switch self {
         case .blurryLogo:
-            return "img_light_blurry_logo"
+            return "yalla_img_blurry_logo"
         case .closeCircle:
-            return "img_light_close_circle"
+            return "yalla_img_close_circle"
         case .login:
-            return "img_light_login"
+            return "yalla_img_login"
         case .logout:
-            return "img_light_logout"
+            return "yalla_img_logout"
         case .mapPin:
-            return "img_light_map_pin"
+            return "yalla_img_map_pin"
         case .notificationMute:
-            return "img_light_notification_mute"
+            return "yalla_img_notification_mute"
         case .orderHistory:
-            return "img_light_order_history"
+            return "yalla_img_order_history"
         case .orderSearch:
-            return "img_light_order_search"
+            return "yalla_img_order_search"
         case .safety:
-            return "img_light_safety"
+            return "yalla_img_safety"
         case .shieldCheck:
-            return "img_light_shield_check"
+            return "yalla_img_shield_check"
         case .tariffCard:
-            return "img_light_tariff_card"
+            return "yalla_img_tariff_card"
         case .trashCan:
-            return "img_light_trash_can"
+            return "yalla_img_trash_can"
         }
-    }
-
-    public var darkResourceName: String {
-        switch self {
-        case .blurryLogo:
-            return "img_dark_blurry_logo"
-        case .closeCircle:
-            return "img_dark_close_circle"
-        case .login:
-            return "img_dark_login"
-        case .logout:
-            return "img_dark_logout"
-        case .mapPin:
-            return "img_dark_map_pin"
-        case .notificationMute:
-            return "img_dark_notification_mute"
-        case .orderHistory:
-            return "img_dark_order_history"
-        case .orderSearch:
-            return "img_dark_order_search"
-        case .safety:
-            return "img_dark_safety"
-        case .shieldCheck:
-            return "img_dark_shield_check"
-        case .tariffCard:
-            return "img_dark_tariff_card"
-        case .trashCan:
-            return "img_dark_trash_can"
-        }
-    }
-
-    public func resourceName(for style: YallaInterfaceStyle) -> String {
-        return style == .dark ? darkResourceName : lightResourceName
-    }
-
-    public func nativeImage(for style: YallaInterfaceStyle) -> YallaNativeImage? {
-        guard let url = YallaResourcesIOS.drawableURL(resourceName(for: style)) else {
-            return nil
-        }
-        #if canImport(UIKit)
-        return UIImage(contentsOfFile: url.path)
-        #elseif canImport(AppKit)
-        return NSImage(contentsOf: url)
-        #endif
     }
 
     #if canImport(UIKit)
-    public func uiImage(for style: UIUserInterfaceStyle) -> UIImage? {
-        return nativeImage(for: style)
+    public func uiImage(compatibleWith traitCollection: UITraitCollection? = nil) -> UIImage? {
+        return YallaResourcesIOS.platformImage(assetName, compatibleWith: traitCollection)
     }
     #elseif canImport(AppKit)
-    public func nsImage(for style: YallaInterfaceStyle) -> NSImage? {
-        return nativeImage(for: style)
+    public func nsImage() -> NSImage? {
+        return YallaResourcesIOS.platformImage(assetName)
     }
     #endif
 
-    public func image(for colorScheme: ColorScheme) -> Image {
-        let style: YallaInterfaceStyle = colorScheme == .dark ? .dark : .light
-        if let nativeImage = nativeImage(for: style) {
-            #if canImport(UIKit)
-            return Image(uiImage: nativeImage)
-            #elseif canImport(AppKit)
-            return Image(nsImage: nativeImage)
-            #endif
-        }
-        return Image(resourceName(for: style), bundle: YallaResourcesIOS.bundle)
+    @available(iOS 13.0, macOS 10.15, *)
+    public var image: Image {
+        YallaResourcesIOS.swiftUIImage(assetName)
     }
 }
