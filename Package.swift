@@ -6,7 +6,8 @@ let package = Package(
     name: "YallaSDKIOS",
     defaultLocalization: "uz-Latn",
     platforms: [
-        .iOS(.v16)
+        .iOS(.v16),
+        .macOS(.v12)
     ],
     products: [
         .library(
@@ -16,13 +17,22 @@ let package = Package(
         .library(
             name: "YallaResourcesIOS",
             targets: ["YallaResourcesIOS"]
+        ),
+        .library(
+            name: "YallaDesignIOS",
+            targets: ["YallaDesignIOS"]
         )
     ],
     targets: [
         .target(
             name: "YallaSDKIOS",
-            dependencies: ["YallaResourcesIOS"],
+            dependencies: ["YallaResourcesIOS", "YallaDesignIOS"],
             path: "Sources/YallaSDKIOS"
+        ),
+        .target(
+            name: "YallaDesignIOS",
+            dependencies: ["YallaResourcesIOS"],
+            path: "Sources/YallaDesignIOS"
         ),
         .target(
             name: "YallaResourcesIOS",
@@ -33,7 +43,7 @@ let package = Package(
         ),
         .testTarget(
             name: "YallaSDKIOSTests",
-            dependencies: ["YallaSDKIOS", "YallaResourcesIOS"],
+            dependencies: ["YallaSDKIOS", "YallaResourcesIOS", "YallaDesignIOS"],
             path: "Tests/YallaSDKIOSTests"
         )
     ]

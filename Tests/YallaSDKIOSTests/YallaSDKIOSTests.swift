@@ -1,5 +1,6 @@
 import XCTest
 @testable import YallaSDKIOS
+import YallaDesignIOS
 import YallaResourcesIOS
 
 final class YallaSDKIOSTests: XCTestCase {
@@ -32,5 +33,12 @@ final class YallaSDKIOSTests: XCTestCase {
                 withExtension: "json"
             )
         )
+    }
+
+    func testGeneratedDesignAccessors() {
+        XCTAssertEqual(YallaThemedImage.login.lightResourceName, "img_light_login")
+        XCTAssertEqual(YallaThemedImage.login.darkResourceName, "img_dark_login")
+        XCTAssertEqual(YallaTypography.Body.Base.regular.fontResourceName, "sfpro_normal")
+        XCTAssertEqual(YallaTypography.Custom.carNumber.fontResourceName, "nummernschild")
     }
 }
