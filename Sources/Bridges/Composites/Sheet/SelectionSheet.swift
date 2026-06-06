@@ -1,0 +1,65 @@
+import UIKit
+import YallaComponents
+
+final class SelectionSheet: Sheet {
+    private let titleText: String
+    private let items: [SelectableItemModel]
+    private var selectedId: String?
+    private let onSelect: (String) -> Void
+    private let contentStack = UIStackView()
+    private var rows: [(id: String, controller: SelectableItemController)] = []
+
+    init(
+        title: String,
+        items: [SelectableItemModel],
+        selectedId: String?,
+        onSelect: @escaping (String) -> Void,
+        onDismissRequest: @escaping () -> Void
+    ) {
+        self.titleText = title
+        self.items = items
+        self.selectedId = selectedId
+        self.onSelect = onSelect
+        super.init(dismissEnabled: true, onDismissRequest: onDismissRequest)
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setHeader(title: titleText, showClose: true)
+        buildItems()
+        setScrollableContent(contentStack)
+    }
+
+    override func preferredContentHeight() -> CGFloat? {
+        guard !items.isEmpty else { return nil }
+        let rows = CGFloat(items.count) * 56 + CGFloat(items.count - 1) * 8
+        return 72 + rows + 24
+    }
+
+    private func buildItems() {
+        contentStack.axis = .vertical
+        contentStack.spacing = 8
+        for item in items {
+            let controller = SelectableItemController(
+                text: item.text,
+                icon: item.icon,
+                tintIcon: item.tintIcon,
+                selected: item.id == selectedId,
+                onClick: { [weak self] in self?.handleSelect(item.id) }
+            )
+            addChild(controller.viewController)
+            let row = controller.viewController.view!
+            row.translatesAutoresizingMaskIntoConstraints = false
+            row.heightAnchor.constraint(equalToConstant: 56).isActive = true
+            contentStack.addArrangedSubview(row)
+            controller.viewController.didMove(toParent: self)
+            rows.append((id: item.id, controller: controller))
+        }
+    }
+
+    private func handleSelect(_ id: String) {
+        selectedId = id
+        for row in rows { row.controller.setSelected(selected: row.id == id) }
+        onSelect(id)
+    }
+}

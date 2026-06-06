@@ -1,0 +1,4 @@
+module Design {
+header "Design-Swift.h"
+export *
+}

@@ -1,0 +1,4 @@
+module Resources {
+header "Resources-Swift.h"
+export *
+}

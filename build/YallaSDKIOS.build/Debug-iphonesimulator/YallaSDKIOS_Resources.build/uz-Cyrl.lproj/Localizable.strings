@@ -1,0 +1,550 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>auth_otp_description</key>
+	<string>Илтимос, +998%1$@ рақамига юборилган %2$@ хонали кодни киритинг.</string>
+	<key>auth_otp_resend</key>
+	<string>Кодни қайта юбориш</string>
+	<key>auth_otp_resend_countdown</key>
+	<string>%1$@ сониядан сўнг кодни қайта юбориш</string>
+	<key>auth_otp_title</key>
+	<string>Хавфсизлик коди</string>
+	<key>auth_privacy_policy_agreement</key>
+	<string>Давом этиш орқали махфийлик сиёсатимиз билан розилик билдирасиз.</string>
+	<key>auth_privacy_policy_link</key>
+	<string>махфийлик сиёсатимиз</string>
+	<key>auth_required_action</key>
+	<string>Кириш</string>
+	<key>auth_required_description</key>
+	<string>Бу атиги бир неча дақиқа олади</string>
+	<key>auth_required_title</key>
+	<string>Давом этиш учун ҳисобингизга киринг</string>
+	<key>auth_send_code_error</key>
+	<string>Тасдиқлаш кодини юбориб бўлмади</string>
+	<key>auth_validate_code_error</key>
+	<string>Тасдиқлаш коди нотўғри</string>
+	<key>auth_welcome_description</key>
+	<string>Давом этиш учун телефон рақамингизни киритинг.</string>
+	<key>auth_welcome_sms_hint</key>
+	<string>Рақамингизга тасдиқлаш коди билан СМС юборилади.</string>
+	<key>auth_welcome_title</key>
+	<string>Хуш келибсиз!</string>
+	<key>bonus_amount</key>
+	<string>Бонус миқдори</string>
+	<key>bonus_balance</key>
+	<string>Сизда %1$@ балл бор</string>
+	<key>bonus_pay</key>
+	<string>Бонус билан тўлаш</string>
+	<key>bonus_pay_for_next_trip</key>
+	<string>Эконом ва Комфортда сафар қилинг — кейинги сафарлар учун бонуслар билан тўланг.</string>
+	<key>bonus_promocode_enter</key>
+	<string>Промокодни киритинг</string>
+	<key>bonus_promocode_error</key>
+	<string>Бундай промокод мавжуд эмас</string>
+	<key>bonus_promocode_hint</key>
+	<string>Чегирма кейинги сафарингизда автоматик қўлланади</string>
+	<key>bonus_promocode_placeholder</key>
+	<string>Кодни киритинг</string>
+	<key>bonus_promocode_success</key>
+	<string>Промокод муваффақиятли қўлланди</string>
+	<key>bonus_promocode_title</key>
+	<string>Промокод</string>
+	<key>bonus_rate</key>
+	<string>1 танга = 1 сўм</string>
+	<key>bonus_section_title</key>
+	<string>Бонуслар</string>
+	<key>bonus_title</key>
+	<string>Бонуслар ва чегирмалар</string>
+	<key>cashback</key>
+	<string>Кешбек</string>
+	<key>common_action_activate</key>
+	<string>Фаоллаштириш</string>
+	<key>common_action_all</key>
+	<string>Барчаси</string>
+	<key>common_action_allow</key>
+	<string>Рухсат бериш</string>
+	<key>common_action_cancel</key>
+	<string>Бекор қилиш</string>
+	<key>common_action_confirm</key>
+	<string>Тасдиқлаш</string>
+	<key>common_action_delete</key>
+	<string>Ўчириш</string>
+	<key>common_action_edit</key>
+	<string>Таҳрирлаш</string>
+	<key>common_action_next</key>
+	<string>Кейинги</string>
+	<key>common_action_save</key>
+	<string>Сақлаш</string>
+	<key>common_action_select</key>
+	<string>Танлаш</string>
+	<key>common_action_send</key>
+	<string>Юбориш</string>
+	<key>common_action_skip</key>
+	<string>Ўтказиб юбориш</string>
+	<key>common_action_start</key>
+	<string>Бошлаш</string>
+	<key>common_action_use</key>
+	<string>Фойдаланиш</string>
+	<key>common_label_details</key>
+	<string>Тафсилотлар</string>
+	<key>common_label_status</key>
+	<string>Ҳолат</string>
+	<key>common_status_loading</key>
+	<string>Юкланмоқда</string>
+	<key>common_status_ready</key>
+	<string>Тайёр</string>
+	<key>common_status_searching</key>
+	<string>Қидирилмоқда</string>
+	<key>contact_action_call</key>
+	<string>Қўнғироқ қилиш</string>
+	<key>contact_action_telegram</key>
+	<string>Telegram</string>
+	<key>contact_help</key>
+	<string>Ёрдам</string>
+	<key>contact_support_menu</key>
+	<string>Ёрдам хизмати</string>
+	<key>contact_support_title</key>
+	<string>Қўллаб-қувватлаш хизмати</string>
+	<key>driver_arrival_time</key>
+	<string>%1$@ мин</string>
+	<key>driver_become</key>
+	<string>Ҳайдовчи бўлиш</string>
+	<key>driver_become_description</key>
+	<string>Ариза қолдиринг, биз сиз билан тез орада боғланамиз</string>
+	<key>driver_become_error</key>
+	<string>Нимадир хато кетди. Қайтадан уриниб кўринг.</string>
+	<key>driver_become_name_hint</key>
+	<string>Исмингиз</string>
+	<key>driver_become_region_title</key>
+	<string>Вилоятингиз</string>
+	<key>driver_become_select_region</key>
+	<string>Вилоятингиз</string>
+	<key>driver_become_submit</key>
+	<string>Аризани юбориш</string>
+	<key>driver_become_success</key>
+	<string>Аризангиз муваффақиятли юборилди. Тез орада сиз билан боғланамиз.</string>
+	<key>driver_car</key>
+	<string>Автомобил</string>
+	<key>driver_label_rating</key>
+	<string>Рейтинг:</string>
+	<key>driver_label_title</key>
+	<string>Ҳайдовчи</string>
+	<key>driver_label_trips</key>
+	<string>Сафарлар:</string>
+	<key>driver_status_coming</key>
+	<string>Келмоқда</string>
+	<key>driver_status_on_way</key>
+	<string>Йўлда</string>
+	<key>driver_tariff</key>
+	<string>Тариф</string>
+	<key>driver_travel_time</key>
+	<string>Йўл вақти: %1$@ мин</string>
+	<key>error_application</key>
+	<string>Илова хатоси юз берди. Илтимос, қўллаб-қувватлаш хизмати билан боғланинг.</string>
+	<key>error_client_request</key>
+	<string>Бизнинг тарафимизда хатолик юз берди. Илтимос, кейинроқ қайта уриниб кўринг.</string>
+	<key>error_connection_timeout</key>
+	<string>Уланиш вақти тугади. Илтимос, қайта уриниб кўринг.</string>
+	<key>error_data_format</key>
+	<string>Маълумотлар формати хатоси. Илтимос, иловангизни янгиланг.</string>
+	<key>error_network_unexpected</key>
+	<string>Кутилмаган тармоқ хатоси юз берди.</string>
+	<key>error_no_internet</key>
+	<string>Интернетга уланиш йўқ. Илтимос, тармоқ созламаларингизни текширинг.</string>
+	<key>error_server_busy</key>
+	<string>Серверларимиз банд. Илтимос, бир оздан кейин қайта уриниб кўринг.</string>
+	<key>error_session_expired</key>
+	<string>Сессия муддати тугади. Илтимос, қайта киринг.</string>
+	<key>error_unexpected</key>
+	<string>Кутилмаган хатолик юз берди. Илтимос, кейинроқ қайта уриниб кўринг.</string>
+	<key>error_unexpected_redirect</key>
+	<string>Кутилмаган йўналтириш. Илтимос, қўллаб-қувватлаш хизмати билан боғланинг.</string>
+	<key>error_unknown</key>
+	<string>Номаълум хатолик юз берди. Илтимос, қайта уриниб кўринг.</string>
+	<key>force_update_action</key>
+	<string>Янгилаш</string>
+	<key>force_update_description</key>
+	<string>Илованинг янги версияси мавжуд. Давом этиш учун янгиланг.</string>
+	<key>force_update_title</key>
+	<string>Янгилаш керак</string>
+	<key>format_currency_range</key>
+	<string>%1$@ дан %2$@ гача</string>
+	<key>format_currency_sum</key>
+	<string>%1$@ сўм</string>
+	<key>format_percent_up_to</key>
+	<string>%1$@%% гача</string>
+	<key>format_time_min</key>
+	<string>%1$@ мин</string>
+	<key>format_time_min_short</key>
+	<string>дақ</string>
+	<key>history_date_time</key>
+	<string>Сафар санаси ва вақти</string>
+	<key>history_delete</key>
+	<string>Сафарни ўчириш</string>
+	<key>history_delete_error</key>
+	<string>Сафарни ўчириб бўлмади</string>
+	<key>history_delete_success</key>
+	<string>Сафар муваффақиятли ўчирилди</string>
+	<key>history_empty</key>
+	<string>Ҳозирча сафарлар йўқ</string>
+	<key>history_menu_title</key>
+	<string>Сафарлар тарихи</string>
+	<key>history_status_canceled</key>
+	<string>Бекор қилинди</string>
+	<key>history_status_completed</key>
+	<string>Сафар якунланди</string>
+	<key>history_title</key>
+	<string>Менинг сафарларим</string>
+	<key>info_about_title</key>
+	<string>Илова ҳақида</string>
+	<key>info_license</key>
+	<string>Лицензия шартномаси</string>
+	<key>info_privacy_policy</key>
+	<string>Махфийлик сиёсати</string>
+	<key>info_rate_app</key>
+	<string>Иловани баҳолаш</string>
+	<key>info_social_media</key>
+	<string>Биз ижтимоий тармоқларда</string>
+	<key>intro_language_subtitle</key>
+	<string>Кейинроқ Созламаларда ўзгартиришингиз мумкин</string>
+	<key>intro_language_title</key>
+	<string>Илова тилини танланг</string>
+	<key>intro_location_description</key>
+	<string>Аниқ буюртма бериш учун жойлашувингизни кўрсатинг.</string>
+	<key>intro_location_title</key>
+	<string>Жойлашув</string>
+	<key>intro_notification_description</key>
+	<string>Билдиришномалар юбориш учун рухсат беринг</string>
+	<key>intro_notification_title</key>
+	<string>Билдиришномалар</string>
+	<key>intro_onboarding_1_description</key>
+	<string>Сафарни буюртма қилинг — Yalla бир неча сонияда энг яқин ҳайдовчини топади.</string>
+	<key>intro_onboarding_1_title</key>
+	<string>Тез ва қулай</string>
+	<key>intro_onboarding_2_description</key>
+	<string>Yallaдаги ҳар бир ҳайдовчи текширувдан ўтган ва юқори рейтингга эга.</string>
+	<key>intro_onboarding_2_title</key>
+	<string>Ишончли ҳайдовчилар</string>
+	<key>intro_onboarding_3_description</key>
+	<string>Сафар бошланишидан олдин нархни билиб олинг — яширин тўловлар ва кутилмаган харажатлар йўқ.</string>
+	<key>intro_onboarding_3_title</key>
+	<string>Шаффоф нарх</string>
+	<key>intro_onboarding_4_description</key>
+	<string>Ўзингизга қулай усулда тўланг — карта ёки нақд пул билан. Yalla билан ҳаммаси осон.</string>
+	<key>intro_onboarding_4_title</key>
+	<string>Қулай тўлов</string>
+	<key>location_gps_subtitle</key>
+	<string>Сизнинг вақтингиз — бизнинг тезлигимиз</string>
+	<key>location_gps_title</key>
+	<string>GPS-ни\nёқинг</string>
+	<key>location_permission_action</key>
+	<string>Рухсат бериш</string>
+	<key>location_permission_description</key>
+	<string>Аниқ чақирув учун жойлашувингизни тақдим этинг.</string>
+	<key>location_permission_title</key>
+	<string>Жойлашувни ёқинг</string>
+	<key>no_internet_action</key>
+	<string>Янгилаш</string>
+	<key>no_internet_action_menu</key>
+	<string>Менюга ўтиш</string>
+	<key>no_internet_description</key>
+	<string>Интернетга уланишни текширинг</string>
+	<key>no_internet_title</key>
+	<string>Интернетга уланиш йўқ</string>
+	<key>notification_empty</key>
+	<string>Ҳозирча билдиришномалар йўқ</string>
+	<key>notification_title</key>
+	<string>Билдиришномалар</string>
+	<key>order_action_cancel</key>
+	<string>Буюртмани бекор қилиш</string>
+	<key>order_action_order_more</key>
+	<string>Яна буюртма бериш</string>
+	<key>order_action_submit</key>
+	<string>Буюртма бериш</string>
+	<key>order_arriving_in</key>
+	<string>Келиш вақти</string>
+	<key>order_cancel_action_yes</key>
+	<string>Ҳа, бекор қилиш</string>
+	<key>order_cancel_before_search</key>
+	<string>Сафар ҳайдовчини қидириш бошланишидан олдин бекор қилинди</string>
+	<key>order_cancel_confirm_description</key>
+	<string>Қидирувни ёки сафарни бекор қилгандан сўнг бошқа ҳайдовчини қидиришга тўғри келади</string>
+	<key>order_cancel_confirm_title</key>
+	<string>Сафарни ростдан ҳам бекор қилмоқчимисиз?</string>
+	<key>order_cancel_countdown</key>
+	<string>%1$@ сония</string>
+	<key>order_cancel_error</key>
+	<string>Буюртмани бекор қилиб бўлмади</string>
+	<key>order_cancel_reason_description</key>
+	<string>Сафарни қайси сабаб билан бекор қилдингиз?</string>
+	<key>order_cancel_reason_error</key>
+	<string>Бекор қилиш сабабини юбориб бўлмади</string>
+	<key>order_cancel_reason_success</key>
+	<string>Бекор қилиш сабаби юборилди</string>
+	<key>order_cancel_reason_title</key>
+	<string>Бекор қилиш сабаби</string>
+	<key>order_cancel_success</key>
+	<string>Буюртмангиз бекор қилинди</string>
+	<key>order_cancel_trip_title</key>
+	<string>Буюртмани бекор қилиш?</string>
+	<key>order_comment_placeholder</key>
+	<string>Изоҳ киритинг</string>
+	<key>order_comment_title</key>
+	<string>Ҳайдовчига изоҳ</string>
+	<key>order_contact_driver</key>
+	<string>Ҳайдовчи билан боғланиш</string>
+	<key>order_create_error</key>
+	<string>Буюртмани яратиб бўлмади</string>
+	<key>order_create_success</key>
+	<string>Буюртма муваффақиятли яратилди</string>
+	<key>order_destination_hint</key>
+	<string>Қаерга борамиз?</string>
+	<key>order_destination_short</key>
+	<string>Қаерга борамиз?</string>
+	<key>order_details_about_trip</key>
+	<string>Сафар ҳақида</string>
+	<key>order_details_arrival</key>
+	<string>Етиб келиш</string>
+	<key>order_details_contact</key>
+	<string>Боғланиш</string>
+	<key>order_details_need_help</key>
+	<string>Ёрдам керакми?</string>
+	<key>order_details_pickup_eta</key>
+	<string>Етиб келиш ~%1$@</string>
+	<key>order_details_safety</key>
+	<string>Хавфсизлик</string>
+	<key>order_details_share</key>
+	<string>Улашиш</string>
+	<key>order_eta_format</key>
+	<string>~ %1$@ мин</string>
+	<key>order_free_waiting</key>
+	<string>Бепул кутиш</string>
+	<key>order_list_title</key>
+	<string>Сизнинг буюртмаларингиз</string>
+	<key>order_location_not_found</key>
+	<string>Биз бу манзилни тополмадик.\nИлтимос, қайта уриниб кўринг.</string>
+	<key>order_location_not_supported</key>
+	<string>%1$@ такси хизмати томонидан қўллаб-қувватланмайди</string>
+	<key>order_location_set_mark</key>
+	<string>Белги қўйиш</string>
+	<key>order_paid_waiting</key>
+	<string>Пуллик кутиш</string>
+	<key>order_pay_by_card</key>
+	<string>Карта орқали тўлаш</string>
+	<key>order_pay_by_cash</key>
+	<string>Нақд пул билан тўлаш</string>
+	<key>order_payment_update_error</key>
+	<string>Тўлов турини ўзгартириб бўлмади</string>
+	<key>order_payment_update_success</key>
+	<string>Тўлов тури ўзгартирилди</string>
+	<key>order_pickup_time</key>
+	<string>Келиш %1$@ дақ</string>
+	<key>order_rate_error</key>
+	<string>Сафарни баҳолаб бўлмади</string>
+	<key>order_rate_success</key>
+	<string>Сафар муваффақиятли баҳоланди</string>
+	<key>order_search_cars_nearby</key>
+	<string>Сизга яқин %1$@ та машина бор</string>
+	<key>order_search_selecting</key>
+	<string>Мос келадиганларни танлаймиз</string>
+	<key>order_search_time_estimate</key>
+	<string>Бу жараён %1$@ дақиқагача давом этиши мумкин.</string>
+	<key>order_search_time_estimate_unknown</key>
+	<string>Бу бир неча дақиқа вақт олиши мумкин</string>
+	<key>order_services_unavailable</key>
+	<string>Танланган хизматлар ушбу тариф учун мавжуд эмас</string>
+	<key>order_status_by_instruction</key>
+	<string>Йўналиш бўйлаб</string>
+	<key>order_status_coming</key>
+	<string>Сиз томонга келмоқда</string>
+	<key>order_status_searching</key>
+	<string>Қидирилмоқда</string>
+	<key>order_stops_add</key>
+	<string>Бекат қўшиш</string>
+	<key>order_stops_count</key>
+	<string>%1$@ манзил</string>
+	<key>order_stops_title</key>
+	<string>Бекатлар</string>
+	<key>order_trip_details</key>
+	<string>Буюртма тафсилотлари</string>
+	<key>order_trip_info</key>
+	<string>Буюртма ҳақида</string>
+	<key>order_until_trip_end</key>
+	<string>Сафар якунигача</string>
+	<key>payment_card_add</key>
+	<string>Карта қўшиш</string>
+	<key>payment_card_add_error</key>
+	<string>Нотўғри маълумот, қайта уриниб кўринг</string>
+	<key>payment_card_add_success</key>
+	<string>Карта муваффақиятли қўшилди</string>
+	<key>payment_card_delete</key>
+	<string>Картани ўчириш</string>
+	<key>payment_card_delete_confirm</key>
+	<string>Картангизни ростдан ҳам ўчирмоқчимисиз?</string>
+	<key>payment_card_delete_error</key>
+	<string>Картани ўчириш муваффақиятсиз якунланди</string>
+	<key>payment_card_delete_success</key>
+	<string>Карта муваффақиятли ўчирилди</string>
+	<key>payment_card_delete_warning</key>
+	<string>**** %1$@ картаси ўчирилгандан кейин маълумотларни қайта тиклаб бўлмайди.</string>
+	<key>payment_card_list</key>
+	<string>Карталар</string>
+	<key>payment_card_new</key>
+	<string>Янги карта</string>
+	<key>payment_card_number</key>
+	<string>Карта рақами</string>
+	<key>payment_section_cards</key>
+	<string>Карталар ва бонус</string>
+	<key>payment_section_other</key>
+	<string>Бошқа усуллар</string>
+	<key>payment_title</key>
+	<string>Тўлов усули</string>
+	<key>payment_type_card</key>
+	<string>Карта %1$@</string>
+	<key>payment_type_card_dot</key>
+	<string>• %1$@</string>
+	<key>payment_type_cash</key>
+	<string>Нақд пул</string>
+	<key>places_add_hint</key>
+	<string>Тез буюртма қилиш учун манзил қўшинг</string>
+	<key>places_create_error</key>
+	<string>Манзилни яратиб бўлмади</string>
+	<key>places_create_success</key>
+	<string>Манзил муваффақиятли қўшилди</string>
+	<key>places_delete_action</key>
+	<string>Ҳа, манзилни ўчириш</string>
+	<key>places_delete_confirm</key>
+	<string>Сиз ҳақиқатан ҳам ушбу манзилни ўчирмоқчимисиз?</string>
+	<key>places_delete_error</key>
+	<string>Манзилни ўчириб бўлмади</string>
+	<key>places_delete_success</key>
+	<string>Манзил муваффақиятли ўчирилди</string>
+	<key>places_delete_title</key>
+	<string>Манзилни ўчириш</string>
+	<key>places_delete_warning</key>
+	<string>Манзил ўчирилгандан сўнг маълумотларни тиклаб бўлмайди</string>
+	<key>places_form_address_hint</key>
+	<string>Манзилни киритинг</string>
+	<key>places_form_building</key>
+	<string>Уй рақами</string>
+	<key>places_form_comment</key>
+	<string>Изоҳ</string>
+	<key>places_form_edit</key>
+	<string>Манзилни таҳрирлаш</string>
+	<key>places_form_entrance</key>
+	<string>Кириш</string>
+	<key>places_form_name</key>
+	<string>Манзил номи</string>
+	<key>places_form_new</key>
+	<string>Янги манзил</string>
+	<key>places_title</key>
+	<string>Менинг манзилларим</string>
+	<key>places_type_favorite</key>
+	<string>Севимли</string>
+	<key>places_type_home</key>
+	<string>Уй</string>
+	<key>places_type_office</key>
+	<string>Офис</string>
+	<key>places_type_other</key>
+	<string>Бошқа</string>
+	<key>places_type_work</key>
+	<string>Иш</string>
+	<key>places_update_error</key>
+	<string>Манзилни янгилаб бўлмади</string>
+	<key>places_update_success</key>
+	<string>Манзил муваффақиятли янгиланди</string>
+	<key>profile_avatar_update_error</key>
+	<string>Профил расмини янгилаб бўлмади</string>
+	<key>profile_avatar_update_success</key>
+	<string>Профил расми муваффақиятли янгиланди</string>
+	<key>profile_delete_action</key>
+	<string>Ҳа, ҳисобни ўчириш</string>
+	<key>profile_delete_confirm</key>
+	<string>Ҳисобингизни ростдан ҳам ўчирмоқчимисиз?</string>
+	<key>profile_delete_title</key>
+	<string>Ҳисобни ўчириш</string>
+	<key>profile_delete_warning</key>
+	<string>Ҳисоб ўчирилгандан сўнг барча маълумотлар бутунлай йўқолади ва қайта тикланмайди.</string>
+	<key>profile_edit_title</key>
+	<string>Профилни таҳрирлаш</string>
+	<key>profile_form_incomplete</key>
+	<string>Барча майдонларни тўлдиринг</string>
+	<key>profile_logout_action</key>
+	<string>Ҳа, ҳисобдан чиқиш</string>
+	<key>profile_logout_confirm</key>
+	<string>Ҳисобдан чиқишни ростдан хоҳлайсизми?</string>
+	<key>profile_logout_description</key>
+	<string>Чиққанингиздан сўнг қайтадан ҳисобингизга киришингиз мумкин</string>
+	<key>profile_logout_title</key>
+	<string>Ҳисобдан чиқиш</string>
+	<key>profile_photo_change</key>
+	<string>Расмни ўзгартириш</string>
+	<key>profile_photo_delete</key>
+	<string>Расмни ўчириш</string>
+	<key>profile_photo_gallery</key>
+	<string>Галереядан танлаш</string>
+	<key>profile_photo_take</key>
+	<string>Суратга олиш</string>
+	<key>profile_update_error</key>
+	<string>Профилни янгилаб бўлмади</string>
+	<key>profile_update_success</key>
+	<string>Профил муваффақиятли янгиланди</string>
+	<key>rating_how_was_trip</key>
+	<string>Сафар қандай ўтди?</string>
+	<key>rating_what_did_you_like</key>
+	<string>Сизга нима айниқса ёқди?</string>
+	<key>register_action</key>
+	<string>Рўйхатдан ўтиш</string>
+	<key>register_error</key>
+	<string>Рўйхатдан ўтиш муваффақиятсиз якунланди</string>
+	<key>register_gender_female</key>
+	<string>Аёл</string>
+	<key>register_gender_male</key>
+	<string>Эркак</string>
+	<key>register_input_birthdate</key>
+	<string>Туғилган сана</string>
+	<key>register_input_name</key>
+	<string>Исмингизни киритинг</string>
+	<key>register_input_surname</key>
+	<string>Фамилиянгизни киритинг</string>
+	<key>register_subtitle</key>
+	<string>Сизга қандай мурожаат қилишим мумкин?</string>
+	<key>register_title</key>
+	<string>Келинг, танишамиз</string>
+	<key>safety_action_understood</key>
+	<string>Тушунарли</string>
+	<key>safety_description_one</key>
+	<string>Барча ҳайдовчиларимиз малакали ва катта тажрибага эга.</string>
+	<key>safety_description_two</key>
+	<string>Биз ҳар бир ҳайдовчини хавфсизликнинг барча мезонлари бўйича синчковлик билан текширамиз.</string>
+	<key>safety_title</key>
+	<string>Хавфсизлик</string>
+	<key>service_delivery</key>
+	<string>Етказиб бериш</string>
+	<key>service_intercity</key>
+	<string>Шаҳарлараро</string>
+	<key>service_mail</key>
+	<string>Почта</string>
+	<key>service_taxi</key>
+	<string>Такси</string>
+	<key>settings_language</key>
+	<string>Илова тили</string>
+	<key>settings_map</key>
+	<string>Илова харитаси</string>
+	<key>settings_map_google</key>
+	<string>Google харита</string>
+	<key>settings_map_libre</key>
+	<string>MapLibre харита</string>
+	<key>settings_theme</key>
+	<string>Илова мавзуси</string>
+	<key>settings_theme_dark</key>
+	<string>Тунги мавзу</string>
+	<key>settings_theme_light</key>
+	<string>Ёруғ мавзу</string>
+	<key>settings_theme_system</key>
+	<string>Тизим бўйича</string>
+	<key>settings_title</key>
+	<string>Созламалар</string>
+</dict>
+</plist>

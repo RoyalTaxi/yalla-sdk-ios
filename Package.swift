@@ -6,31 +6,58 @@ let package = Package(
     name: "YallaSDKIOS",
     defaultLocalization: "uz-Latn",
     platforms: [
-        .iOS(.v16),
-        .macOS(.v12)
+        .iOS(.v16)
     ],
     products: [
         .library(
-            name: "YallaResourcesIOS",
-            targets: ["YallaResourcesIOS"]
+            name: "Resources",
+            targets: ["Resources"]
         ),
         .library(
-            name: "YallaDesignIOS",
-            targets: ["YallaDesignIOS"]
+            name: "Design",
+            targets: ["Design"]
+        ),
+        .library(
+            name: "Components",
+            targets: ["Components"]
+        ),
+        .library(
+            name: "Bridges",
+            targets: ["Bridges"]
         )
     ],
     targets: [
-        .target(
-            name: "YallaDesignIOS",
-            dependencies: ["YallaResourcesIOS"],
-            path: "Sources/YallaDesignIOS"
+        .binaryTarget(
+            name: "YallaComponents",
+            path: "../yalla-sdk/components/build/XCFrameworks/debug/YallaComponents.xcframework"
         ),
         .target(
-            name: "YallaResourcesIOS",
-            path: "Sources/YallaResourcesIOS",
+            name: "Resources",
+            path: "Sources/Resources",
             resources: [
                 .process("Resources")
             ]
+        ),
+        .target(
+            name: "Design",
+            dependencies: ["Resources"],
+            path: "Sources/Design"
+        ),
+        .target(
+            name: "Components",
+            dependencies: [
+                "Design",
+                "Resources"
+            ],
+            path: "Sources/Components"
+        ),
+        .target(
+            name: "Bridges",
+            dependencies: [
+                "Components",
+                "YallaComponents"
+            ],
+            path: "Sources/Bridges"
         )
     ]
 )
