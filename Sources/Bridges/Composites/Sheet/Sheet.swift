@@ -62,13 +62,20 @@ class Sheet: UIViewController {
 
     func updateContentHeight(_ contentHeight: CGFloat) {
         // UIKit adds the bottom safe area to a custom detent automatically, so exclude it here.
+        guard contentHeight.isFinite, contentHeight > 0 else { return }
         let chrome = headerHeightConstraint.constant
             + (footerZeroHeightConstraint.isActive ? 0 : footerHeight)
         let total = (contentHeight + chrome).rounded()
         guard total != measuredHeight else { return }
         measuredHeight = total
-        if #available(iOS 16.0, *), let sheet = sheetPresentationController {
-            sheet.animateChanges { sheet.invalidateDetents() }
+        // Defer detent invalidation out of the current layout/CA transaction. Compose calls this
+        // from inside its measure pass via onSizeChanged; calling invalidateDetents synchronously
+        // there throws an NSException from UIKit, which K/N propagates as an unhandled Throwable.
+        if #available(iOS 16.0, *) {
+            DispatchQueue.main.async { [weak self] in
+                guard let self, let sheet = self.sheetPresentationController else { return }
+                sheet.animateChanges { sheet.invalidateDetents() }
+            }
         }
     }
 
