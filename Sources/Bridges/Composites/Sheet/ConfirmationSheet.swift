@@ -5,6 +5,7 @@ import YallaComponents
 
 final class ConfirmationSheet: Sheet {
     private let imageName: String
+    private let isDarkAppearance: Bool
     private let titleText: String
     private let descriptionText: String
     private let actionText: String
@@ -14,6 +15,7 @@ final class ConfirmationSheet: Sheet {
 
     init(
         imageResource: String,
+        isDark: Bool,
         title: String,
         description: String,
         actionText: String,
@@ -22,6 +24,7 @@ final class ConfirmationSheet: Sheet {
         onDismissRequest: @escaping () -> Void
     ) {
         self.imageName = imageResource
+        self.isDarkAppearance = isDark
         self.titleText = title
         self.descriptionText = description
         self.actionText = actionText
@@ -38,7 +41,7 @@ final class ConfirmationSheet: Sheet {
             insets: UIEdgeInsets(top: 16, left: 36, bottom: 16, right: 36),
             centerVertically: true
         )
-        let buttonVC = PrimaryButtonKt.PrimaryButtonViewController(
+        let buttonVC = PrimaryButton_iosKt.PrimaryButtonViewController(
             title: actionText,
             onClick: { [weak self] in self?.onAction() }
         )
@@ -58,7 +61,8 @@ final class ConfirmationSheet: Sheet {
 
     private func buildContent() -> UIView {
         let imageView = UIImageView()
-        imageView.image = YallaResources.platformImage(imageName)
+        let traits = UITraitCollection(userInterfaceStyle: isDarkAppearance ? .dark : .light)
+        imageView.image = YallaResources.platformImage(imageName, compatibleWith: traits)
         imageView.contentMode = .scaleAspectFit
         imageView.translatesAutoresizingMaskIntoConstraints = false
 

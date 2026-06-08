@@ -4,6 +4,7 @@ import YallaComponents
 
 class Sheet: UIViewController {
     private let dismissEnabled: Bool
+    private let sheetSwipeEnabled: Bool
     private let sizesToContent: Bool
     private let onDismissRequest: () -> Void
 
@@ -22,8 +23,9 @@ class Sheet: UIViewController {
 
     private static let contentDetentID = UISheetPresentationController.Detent.Identifier("content")
 
-    init(dismissEnabled: Bool, sizesToContent: Bool = true, onDismissRequest: @escaping () -> Void) {
+    init(dismissEnabled: Bool, sheetSwipeEnabled: Bool = true, sizesToContent: Bool = true, onDismissRequest: @escaping () -> Void) {
         self.dismissEnabled = dismissEnabled
+        self.sheetSwipeEnabled = sheetSwipeEnabled
         self.sizesToContent = sizesToContent
         self.onDismissRequest = onDismissRequest
         super.init(nibName: nil, bundle: nil)
@@ -56,11 +58,6 @@ class Sheet: UIViewController {
         }
     }
 
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        if isBeingDismissed && dismissEnabled { onDismissRequest() }
-    }
-
     // MARK: - Content sizing
 
     func updateContentHeight(_ contentHeight: CGFloat) {
@@ -89,6 +86,11 @@ class Sheet: UIViewController {
         makeIconButton(icon: "ic_x", onTap)
     }
 
+    func handleCloseTap() {
+        onDismissRequest()
+        dismiss(animated: true)
+    }
+
     // MARK: - Slots
 
     func setHeader(title: String?, showClose: Bool, action actionVC: UIViewController? = nil, closeOnTrailing: Bool = false) {
@@ -97,7 +99,7 @@ class Sheet: UIViewController {
         guard hasContent else { return }
 
         if showClose {
-            let handle = makeCloseButton { [weak self] in self?.dismiss(animated: true) }
+            let handle = makeCloseButton { [weak self] in self?.handleCloseTap() }
             closeHandle = handle
             addChild(handle.viewController)
             let closeView = handle.viewController.view!
@@ -143,17 +145,31 @@ class Sheet: UIViewController {
         var constraints = [
             content.leadingAnchor.constraint(equalTo: contentContainer.leadingAnchor, constant: insets.left),
             content.trailingAnchor.constraint(equalTo: contentContainer.trailingAnchor, constant: -insets.right),
-            content.bottomAnchor.constraint(lessThanOrEqualTo: contentContainer.bottomAnchor, constant: -insets.bottom)
+            content.bottomAnchor.constraint(lessThanOrEqualTo: footerContainer.topAnchor, constant: -insets.bottom)
         ]
         if centerVertically {
             constraints += [
-                content.topAnchor.constraint(greaterThanOrEqualTo: contentContainer.topAnchor, constant: insets.top),
+                content.topAnchor.constraint(greaterThanOrEqualTo: headerContainer.bottomAnchor, constant: insets.top),
                 content.centerYAnchor.constraint(equalTo: contentContainer.centerYAnchor)
             ]
         } else {
-            constraints.append(content.topAnchor.constraint(equalTo: contentContainer.topAnchor, constant: insets.top))
+            constraints.append(content.topAnchor.constraint(equalTo: headerContainer.bottomAnchor, constant: insets.top))
         }
         NSLayoutConstraint.activate(constraints)
+        controller?.didMove(toParent: self)
+    }
+
+    func setFillContent(_ content: UIView, controller: UIViewController? = nil, insets: UIEdgeInsets? = nil) {
+        controller.map(addChild)
+        content.translatesAutoresizingMaskIntoConstraints = false
+        contentContainer.addSubview(content)
+        let resolved = insets ?? .zero
+        NSLayoutConstraint.activate([
+            content.topAnchor.constraint(equalTo: contentContainer.topAnchor, constant: resolved.top),
+            content.leadingAnchor.constraint(equalTo: contentContainer.leadingAnchor, constant: resolved.left),
+            content.trailingAnchor.constraint(equalTo: contentContainer.trailingAnchor, constant: -resolved.right),
+            content.bottomAnchor.constraint(equalTo: contentContainer.bottomAnchor, constant: -resolved.bottom)
+        ])
         controller?.didMove(toParent: self)
     }
 
@@ -172,10 +188,10 @@ class Sheet: UIViewController {
         scrollView.addSubview(content)
         contentContainer.addSubview(scrollView)
         NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: contentContainer.topAnchor),
+            scrollView.topAnchor.constraint(equalTo: headerContainer.bottomAnchor),
             scrollView.leadingAnchor.constraint(equalTo: contentContainer.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: contentContainer.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: contentContainer.bottomAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: footerContainer.topAnchor),
 
             content.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: insets.top),
             content.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor, constant: insets.left),
@@ -207,9 +223,14 @@ class Sheet: UIViewController {
     private func buildScaffold() {
         headerContainer.backgroundColor = UIColor.yalla("background_base")
         footerContainer.backgroundColor = UIColor.yalla("background_base")
+        footerContainer.layer.cornerRadius = 28
+        footerContainer.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+        footerContainer.layer.masksToBounds = true
         contentContainer.clipsToBounds = true
 
-        [contentContainer, headerContainer, footerContainer].forEach {
+        contentContainer.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(contentContainer)
+        [headerContainer, footerContainer].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview($0)
         }
@@ -223,15 +244,15 @@ class Sheet: UIViewController {
         footerSafeArea.priority = .defaultHigh
 
         NSLayoutConstraint.activate([
+            contentContainer.topAnchor.constraint(equalTo: view.topAnchor),
+            contentContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            contentContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            contentContainer.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
             headerContainer.topAnchor.constraint(equalTo: view.topAnchor),
             headerContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             headerHeightConstraint,
-
-            contentContainer.topAnchor.constraint(equalTo: headerContainer.bottomAnchor),
-            contentContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            contentContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            contentContainer.bottomAnchor.constraint(equalTo: footerContainer.topAnchor),
 
             footerContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             footerContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -239,6 +260,8 @@ class Sheet: UIViewController {
             footerSafeArea,
             footerZeroHeightConstraint
         ])
+        view.bringSubviewToFront(headerContainer)
+        view.bringSubviewToFront(footerContainer)
     }
 
     private func pin(_ subview: UIView, size: CGFloat, top: CGFloat) {
@@ -277,11 +300,12 @@ class Sheet: UIViewController {
 
     private func configurePresentation() {
         modalPresentationStyle = .pageSheet
-        isModalInPresentation = !dismissEnabled
+        isModalInPresentation = !dismissEnabled || !sheetSwipeEnabled
     }
 
     private func applySheetPresentation() {
         guard #available(iOS 15.0, *), let sheet = sheetPresentationController else { return }
+        sheet.delegate = self
         sheet.prefersGrabberVisible = true
         sheet.preferredCornerRadius = 28
         sheet.prefersScrollingExpandsWhenScrolledToEdge = false
@@ -306,4 +330,10 @@ class Sheet: UIViewController {
 
 extension Sheet: UIScrollViewDelegate {
     func scrollViewDidScroll(_ scrollView: UIScrollView) { updateElevation() }
+}
+
+extension Sheet: UISheetPresentationControllerDelegate {
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        if dismissEnabled { onDismissRequest() }
+    }
 }

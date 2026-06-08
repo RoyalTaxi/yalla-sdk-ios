@@ -4,8 +4,41 @@ import YallaComponents
 public final class YallaSheetFactory: NSObject, SheetFactory {
     public override init() { super.init() }
 
+    public func createContent(
+        fullHeight: Bool,
+        sheetSwipeEnabled: Bool,
+        contentController: UIViewController,
+        onDismissRequest: @escaping () -> Void
+    ) -> ContentSheetHandle {
+        let make = {
+            ContentSheet(
+                fullHeight: fullHeight,
+                sheetSwipeEnabled: sheetSwipeEnabled,
+                contentController: contentController,
+                onDismissRequest: onDismissRequest
+            )
+        }
+        var current = make()
+        var reuseFirst = true
+
+        return ContentSheetHandle(
+            viewController: current,
+            present: { parent in
+                if reuseFirst { reuseFirst = false } else { current = make() }
+                parent.present(current, animated: true)
+            },
+            dismiss: {
+                current.dismiss(animated: true)
+            },
+            updateContentHeight: { height in
+                current.updateComposeContentHeight(CGFloat(truncating: height))
+            }
+        )
+    }
+
     public func createConfirmation(
         imageResource: String,
+        isDark: Bool,
         title: String,
         description: String,
         actionText: String,
@@ -13,8 +46,7 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         onAction: @escaping () -> Void,
         onDismissRequest: @escaping () -> Void
     ) -> ConfirmationSheetHandle {
-        // Fresh VC per (re-)present — see createAction. Reusing one VC carries stale sheet state.
-        let make = { ConfirmationSheet(imageResource: imageResource, title: title, description: description, actionText: actionText, dismissEnabled: dismissEnabled, onAction: onAction, onDismissRequest: onDismissRequest) }
+        let make = { ConfirmationSheet(imageResource: imageResource, isDark: isDark, title: title, description: description, actionText: actionText, dismissEnabled: dismissEnabled, onAction: onAction, onDismissRequest: onDismissRequest) }
         var current = make()
         var reuseFirst = true
 

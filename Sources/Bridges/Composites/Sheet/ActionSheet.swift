@@ -23,7 +23,7 @@ final class ActionSheet: Sheet {
         super.viewDidLoad()
         setHeader(title: titleText, showClose: true)
         buildItems()
-        setScrollableContent(contentStack)
+        setContent(contentStack, insets: UIEdgeInsets(top: 12, left: 16, bottom: 12, right: 16))
     }
 
     override func preferredContentHeight() -> CGFloat? {
@@ -39,6 +39,7 @@ final class ActionSheet: Sheet {
             let controller = ActionableItemController(
                 text: item.text,
                 icon: item.icon,
+                trailingIcon: item.trailingIcon,
                 isDestructive: item.isDestructive,
                 onClick: { [weak self] in self?.onAction(item.id) }
             )

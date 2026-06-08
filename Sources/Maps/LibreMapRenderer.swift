@@ -1,0 +1,411 @@
+import UIKit
+import MapLibre
+import YallaComponents
+
+public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegate {
+
+    private let styleURL: String
+    private var mapView: MLNMapView?
+    private var style: MLNStyle?
+    private weak var listener: IosMapListener?
+    private var closed = false
+
+    private var pendingMarkers: [MapMarker] = []
+    private var pendingRoutes: [MapRoute] = []
+    private var pendingPadding = UIEdgeInsets.zero
+    private var lastEmittedCenter: CLLocationCoordinate2D?
+    private var warnedCirclesUnsupported = false
+
+    private var renderedAnnotations: [String: MLNAnnotation] = [:]
+    private var markerImages: [String: UIImage] = [:]
+    private var sharedIconKeys: [String: String] = [:]
+    private var sharedIconReuseIds: Set<String> = []
+    private var markerData: [String: MapMarker] = [:]
+    private var routeData: [String: MapRoute] = [:]
+    private var routeSources: [String: MLNShapeSource] = [:]
+    private var routeLayers: [String: MLNLineStyleLayer] = [:]
+    private var userInitiatedMove = false
+
+    public init(styleURL: String) {
+        self.styleURL = styleURL
+        super.init()
+    }
+
+    public func createViewController() -> UIViewController {
+        dispatchPrecondition(condition: .onQueue(.main))
+        if mapView == nil {
+            let mv = MLNMapView(frame: .zero, styleURL: URL(string: styleURL))
+            mv.delegate = self
+            mv.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            mv.automaticallyAdjustsContentInset = false
+            let tap = UITapGestureRecognizer(target: self, action: #selector(handleSingleTap(_:)))
+            tap.require(toFail: mv.gestureRecognizers?.first(where: { $0 is UITapGestureRecognizer && ($0 as? UITapGestureRecognizer)?.numberOfTapsRequired == 2 }) ?? UITapGestureRecognizer())
+            mv.addGestureRecognizer(tap)
+            let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+            mv.addGestureRecognizer(longPress)
+            mapView = mv
+            applyPadding()
+        }
+        return MapHostViewController(mapSubview: mapView!)
+    }
+
+    @objc private func handleSingleTap(_ gesture: UITapGestureRecognizer) {
+        guard gesture.state == .ended, let mv = mapView else { return }
+        let pt = gesture.location(in: mv)
+        if let id = annotationIdAt(point: pt, in: mv) {
+            listener?.onMarkerTapped(id: id)
+        } else {
+            let coord = mv.convert(pt, toCoordinateFrom: mv)
+            listener?.onMapTapped(point: GeoPoint(lat: coord.latitude, lng: coord.longitude))
+        }
+    }
+
+    @objc private func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+        guard gesture.state == .began, let mv = mapView else { return }
+        let pt = gesture.location(in: mv)
+        let coord = mv.convert(pt, toCoordinateFrom: mv)
+        listener?.onMapLongPressed(point: GeoPoint(lat: coord.latitude, lng: coord.longitude))
+    }
+
+    private func annotationIdAt(point: CGPoint, in mv: MLNMapView) -> String? {
+        let hitRadius: CGFloat = 22
+        for (id, annotation) in renderedAnnotations {
+            let coord = annotation.coordinate
+            let projected = mv.convert(coord, toPointTo: mv)
+            let dx = projected.x - point.x
+            let dy = projected.y - point.y
+            if (dx * dx + dy * dy) <= hitRadius * hitRadius { return id }
+        }
+        return nil
+    }
+
+    public func setListener(listener: (any IosMapListener)?) {
+        self.listener = listener
+    }
+
+    public func moveTo(target: GeoPoint, zoom: Float) {
+        runOnMain {
+            self.mapView?.setCenter(
+                CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng),
+                zoomLevel: Double(zoom),
+                animated: false
+            )
+        }
+    }
+
+    public func animateTo(target: GeoPoint, zoom: Float, durationMs: Int32) {
+        runOnMain {
+            guard let mv = self.mapView else { return }
+            let cam = MLNMapCamera(
+                lookingAtCenter: CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng),
+                altitude: mv.camera.altitude,
+                pitch: mv.camera.pitch,
+                heading: mv.camera.heading
+            )
+            mv.setZoomLevel(Double(zoom), animated: false)
+            mv.setCamera(cam, withDuration: Double(durationMs) / 1000.0, animationTimingFunction: nil)
+        }
+    }
+
+    public func animateToWithBearing(target: GeoPoint, bearing: Float, zoom: Float, durationMs: Int32) {
+        runOnMain {
+            guard let mv = self.mapView else { return }
+            let cam = MLNMapCamera(
+                lookingAtCenter: CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng),
+                altitude: mv.camera.altitude,
+                pitch: mv.camera.pitch,
+                heading: CLLocationDirection(bearing)
+            )
+            mv.setZoomLevel(Double(zoom), animated: false)
+            mv.setCamera(cam, withDuration: Double(durationMs) / 1000.0, animationTimingFunction: nil)
+        }
+    }
+
+    public func fitBounds(points: [GeoPoint], leftPt: Float, topPt: Float, rightPt: Float, bottomPt: Float, animate: Bool) {
+        guard !points.isEmpty else { return }
+        if points.count == 1 {
+            let single = points[0]
+            runOnMain {
+                let zoom = self.mapView?.zoomLevel ?? 15
+                self.mapView?.setCenter(
+                    CLLocationCoordinate2D(latitude: single.lat, longitude: single.lng),
+                    zoomLevel: zoom,
+                    animated: false
+                )
+            }
+            return
+        }
+        runOnMain {
+            guard let mv = self.mapView else { return }
+            var coords = points.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng) }
+            let baseMargin: CGFloat = 24
+            let insets = UIEdgeInsets(
+                top: CGFloat(topPt) + baseMargin,
+                left: CGFloat(leftPt) + baseMargin,
+                bottom: CGFloat(bottomPt) + baseMargin,
+                right: CGFloat(rightPt) + baseMargin
+            )
+            mv.setVisibleCoordinates(
+                &coords,
+                count: UInt(coords.count),
+                edgePadding: insets,
+                animated: animate
+            )
+        }
+    }
+
+    public func zoomIn() {
+        runOnMain {
+            guard let mv = self.mapView else { return }
+            mv.setZoomLevel(mv.zoomLevel + 1, animated: true)
+        }
+    }
+
+    public func zoomOut() {
+        runOnMain {
+            guard let mv = self.mapView else { return }
+            mv.setZoomLevel(mv.zoomLevel - 1, animated: true)
+        }
+    }
+
+    public func setZoom(zoom: Float) {
+        runOnMain { self.mapView?.setZoomLevel(Double(zoom), animated: true) }
+    }
+
+    public func setStyleUrl(url: String) {
+        runOnMain {
+            guard let parsed = URL(string: url) else { return }
+            guard let mv = self.mapView else { return }
+            if mv.styleURL == parsed { return }
+            self.style = nil
+            self.routeSources.removeAll()
+            self.routeLayers.removeAll()
+            self.routeData.removeAll()
+            if let annotations = mv.annotations { mv.removeAnnotations(annotations) }
+            self.renderedAnnotations.removeAll()
+            self.markerData.removeAll()
+            self.markerImages.removeAll()
+            self.sharedIconKeys.removeAll()
+            self.sharedIconReuseIds.removeAll()
+            mv.styleURL = parsed
+        }
+    }
+
+    public func setStyleJson(json: String) {
+        // MapLibre iOS accepts JSON via MLNStyle.styleJSON — but routing is rare in practice; ignore.
+    }
+
+    private func runOnMain(_ block: @escaping () -> Void) {
+        if Thread.isMainThread { block() } else { DispatchQueue.main.async(execute: block) }
+    }
+
+    public func setPaddingPt(leftPt: Float, topPt: Float, rightPt: Float, bottomPt: Float) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        pendingPadding = UIEdgeInsets(
+            top: CGFloat(topPt),
+            left: CGFloat(leftPt),
+            bottom: CGFloat(bottomPt),
+            right: CGFloat(rightPt)
+        )
+        applyPadding()
+    }
+
+    public func setMarkers(markers: [MapMarker]) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        pendingMarkers = markers
+        if mapView != nil { renderMarkers(markers: markers) }
+    }
+
+    public func setRoutes(routes: [MapRoute]) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        pendingRoutes = routes
+        if mapView != nil { renderRoutes(routes: routes) }
+    }
+
+    public func setCircles(circles: [MapCircle]) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        if !circles.isEmpty && !warnedCirclesUnsupported {
+            warnedCirclesUnsupported = true
+            NSLog("[YallaMaps] MapLibre does not support geographic circles; setCircles is a no-op. MapCapabilities.LIBRE.supportsCircles = false.")
+        }
+    }
+
+    public func close() {
+        dispatchPrecondition(condition: .onQueue(.main))
+        if closed { return }
+        closed = true
+        if let mv = mapView, let annotations = mv.annotations { mv.removeAnnotations(annotations) }
+        if let style = style {
+            routeLayers.values.forEach { style.removeLayer($0) }
+            routeSources.values.forEach { style.removeSource($0) }
+        }
+        routeLayers.removeAll()
+        routeSources.removeAll()
+        renderedAnnotations.removeAll()
+        markerImages.removeAll()
+        sharedIconKeys.removeAll()
+        sharedIconReuseIds.removeAll()
+        markerData.removeAll()
+        routeData.removeAll()
+        mapView?.delegate = nil
+        mapView?.removeFromSuperview()
+        mapView = nil
+        style = nil
+    }
+
+    private func applyPadding() {
+        guard let mv = mapView else { return }
+        mv.contentInset = pendingPadding
+    }
+
+    private func renderMarkers(markers: [MapMarker]) {
+        guard let mv = mapView else { return }
+        let incoming = Dictionary(uniqueKeysWithValues: markers.map { ($0.id, $0) })
+        let stale = Set(renderedAnnotations.keys).filter { id in
+            markerData[id] != nil && incoming[id] == nil
+        }
+        for id in stale {
+            if let ann = renderedAnnotations.removeValue(forKey: id) { mv.removeAnnotation(ann) }
+            markerData.removeValue(forKey: id)
+            markerImages.removeValue(forKey: id)
+            sharedIconKeys.removeValue(forKey: id)
+        }
+        for (id, marker) in incoming {
+            let previous = markerData[id]
+            if let icon = marker.icon {
+                let key = sharedIconKey(for: icon)
+                if !sharedIconReuseIds.contains(key) {
+                    if let img = MapIconLoader.uiImage(for: icon) {
+                        markerImages[key] = img
+                        sharedIconReuseIds.insert(key)
+                    }
+                }
+                sharedIconKeys[id] = key
+            }
+            if previous == nil || previous?.point != marker.point {
+                if let ann = renderedAnnotations.removeValue(forKey: id) { mv.removeAnnotation(ann) }
+                let ann = MLNPointAnnotation()
+                ann.coordinate = CLLocationCoordinate2D(latitude: marker.point.lat, longitude: marker.point.lng)
+                ann.title = id
+                ann.subtitle = marker.contentDescription
+                mv.addAnnotation(ann)
+                renderedAnnotations[id] = ann
+            }
+            markerData[id] = marker
+        }
+    }
+
+    private func renderRoutes(routes: [MapRoute]) {
+        guard let style = style else { return }
+        let incoming = Dictionary(uniqueKeysWithValues: routes.map { ($0.id, $0) })
+        let routeKeys = Set(routeData.keys)
+        let stale = routeKeys.subtracting(incoming.keys)
+        for id in stale {
+            if let layer = routeLayers.removeValue(forKey: id) { style.removeLayer(layer) }
+            if let source = routeSources.removeValue(forKey: id) { style.removeSource(source) }
+            routeData.removeValue(forKey: id)
+        }
+        for (id, route) in incoming {
+            let previous = routeData[id]
+            var coords = route.points.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng) }
+            let polyline = MLNPolylineFeature(coordinates: &coords, count: UInt(coords.count))
+            if let source = routeSources[id] {
+                source.shape = polyline
+                if let layer = routeLayers[id] {
+                    if previous?.colorArgb != route.colorArgb {
+                        layer.lineColor = NSExpression(forConstantValue: uiColor(fromArgb: route.colorArgb))
+                    }
+                    if previous?.widthDp != route.widthDp {
+                        layer.lineWidth = NSExpression(forConstantValue: route.widthDp)
+                    }
+                }
+            } else {
+                let sourceId = "yalla-route-src-\(id)"
+                let layerId = "yalla-route-lyr-\(id)"
+                let source = MLNShapeSource(identifier: sourceId, shape: polyline, options: nil)
+                style.addSource(source)
+                let layer = MLNLineStyleLayer(identifier: layerId, source: source)
+                layer.lineCap = NSExpression(forConstantValue: "round")
+                layer.lineJoin = NSExpression(forConstantValue: "round")
+                layer.lineColor = NSExpression(forConstantValue: uiColor(fromArgb: route.colorArgb))
+                layer.lineWidth = NSExpression(forConstantValue: route.widthDp)
+                style.addLayer(layer)
+                routeSources[id] = source
+                routeLayers[id] = layer
+            }
+            routeData[id] = route
+        }
+    }
+
+    public func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
+        self.style = style
+        renderMarkers(markers: pendingMarkers)
+        renderRoutes(routes: pendingRoutes)
+        listener?.onReady()
+    }
+
+    public func mapView(_ mapView: MLNMapView, regionWillChangeWith reason: MLNCameraChangeReason, animated: Bool) {
+        userInitiatedMove = reason.contains(.gesturePan) ||
+            reason.contains(.gesturePinch) ||
+            reason.contains(.gestureRotate) ||
+            reason.contains(.gestureTilt) ||
+            reason.contains(.gestureZoomIn) ||
+            reason.contains(.gestureZoomOut)
+    }
+
+    public func mapView(_ mapView: MLNMapView, regionIsChangingWith reason: MLNCameraChangeReason) {
+        let center = mapView.centerCoordinate
+        if let prev = lastEmittedCenter, centerEpsilonEqual(prev, center) { return }
+        lastEmittedCenter = center
+        let geo = GeoPoint(lat: center.latitude, lng: center.longitude)
+        listener?.onCameraMove(
+            target: geo,
+            zoom: Float(mapView.zoomLevel),
+            bearing: Float(mapView.direction),
+            tilt: Float(mapView.camera.pitch),
+            isByUser: userInitiatedMove
+        )
+    }
+
+    public func mapView(_ mapView: MLNMapView, regionDidChangeWith reason: MLNCameraChangeReason, animated: Bool) {
+        let center = mapView.centerCoordinate
+        lastEmittedCenter = center
+        let geo = GeoPoint(lat: center.latitude, lng: center.longitude)
+        listener?.onCameraIdle(
+            target: geo,
+            zoom: Float(mapView.zoomLevel),
+            bearing: Float(mapView.direction),
+            tilt: Float(mapView.camera.pitch),
+            isByUser: userInitiatedMove
+        )
+        userInitiatedMove = false
+    }
+
+    public func mapView(_ mapView: MLNMapView, imageFor annotation: MLNAnnotation) -> MLNAnnotationImage? {
+        guard let id = annotation.title.flatMap({ $0 }) else { return nil }
+        guard let sharedKey = sharedIconKeys[id], let image = markerImages[sharedKey] else { return nil }
+        if let cached = mapView.dequeueReusableAnnotationImage(withIdentifier: sharedKey) { return cached }
+        return MLNAnnotationImage(image: image, reuseIdentifier: sharedKey)
+    }
+
+    private func uiColor(fromArgb argb: Int32) -> UIColor {
+        let value = UInt32(bitPattern: argb)
+        let a = CGFloat((value >> 24) & 0xFF) / 255.0
+        let r = CGFloat((value >> 16) & 0xFF) / 255.0
+        let g = CGFloat((value >> 8) & 0xFF) / 255.0
+        let b = CGFloat(value & 0xFF) / 255.0
+        return UIColor(red: r, green: g, blue: b, alpha: a)
+    }
+
+    private func sharedIconKey(for icon: MapMarkerIcon) -> String {
+        if let res = icon as? MapMarkerIcon.Resource { return "yalla-icon-res-\(res.name)" }
+        if let bytes = icon as? MapMarkerIcon.Bytes {
+            return "yalla-icon-bytes-\(bytes.data.hashValue)"
+        }
+        return "yalla-icon-unknown"
+    }
+
+    private func centerEpsilonEqual(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Bool {
+        return abs(a.latitude - b.latitude) < 1e-6 && abs(a.longitude - b.longitude) < 1e-6
+    }
+}
