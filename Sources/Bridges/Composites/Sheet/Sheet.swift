@@ -19,7 +19,12 @@ class Sheet: UIViewController {
     private var footerZeroHeightConstraint: NSLayoutConstraint!
 
     private var measuredHeight: CGFloat?
-    private let footerHeight: CGFloat = 80
+
+    static let headerHeight: CGFloat = 72
+    static let footerHeight: CGFloat = 80
+    private static let footerButtonHeight: CGFloat = 64
+    private static let footerInset: CGFloat = 8
+    private static let footerHorizontalInset: CGFloat = 20
 
     private static let contentDetentID = UISheetPresentationController.Detent.Identifier("content")
 
@@ -64,7 +69,7 @@ class Sheet: UIViewController {
         // UIKit adds the bottom safe area to a custom detent automatically, so exclude it here.
         guard contentHeight.isFinite, contentHeight > 0 else { return }
         let chrome = headerHeightConstraint.constant
-            + (footerZeroHeightConstraint.isActive ? 0 : footerHeight)
+            + (footerZeroHeightConstraint.isActive ? 0 : Self.footerHeight)
         let total = (contentHeight + chrome).rounded()
         guard total != measuredHeight else { return }
         measuredHeight = total
@@ -102,7 +107,7 @@ class Sheet: UIViewController {
 
     func setHeader(title: String?, showClose: Bool, action actionVC: UIViewController? = nil, closeOnTrailing: Bool = false) {
         let hasContent = title != nil || showClose || actionVC != nil
-        headerHeightConstraint.constant = hasContent ? 72 : 0
+        headerHeightConstraint.constant = hasContent ? Self.headerHeight : 0
         guard hasContent else { return }
 
         if showClose {
@@ -155,9 +160,13 @@ class Sheet: UIViewController {
             content.bottomAnchor.constraint(lessThanOrEqualTo: footerContainer.topAnchor, constant: -insets.bottom)
         ]
         if centerVertically {
+            let band = UILayoutGuide()
+            contentContainer.addLayoutGuide(band)
             constraints += [
+                band.topAnchor.constraint(equalTo: headerContainer.bottomAnchor),
+                band.bottomAnchor.constraint(equalTo: footerContainer.topAnchor),
                 content.topAnchor.constraint(greaterThanOrEqualTo: headerContainer.bottomAnchor, constant: insets.top),
-                content.centerYAnchor.constraint(equalTo: contentContainer.centerYAnchor)
+                content.centerYAnchor.constraint(equalTo: band.centerYAnchor)
             ]
         } else {
             constraints.append(content.topAnchor.constraint(equalTo: headerContainer.bottomAnchor, constant: insets.top))
@@ -216,11 +225,11 @@ class Sheet: UIViewController {
         footer.translatesAutoresizingMaskIntoConstraints = false
         footerContainer.addSubview(footer)
         NSLayoutConstraint.activate([
-            footer.topAnchor.constraint(equalTo: footerContainer.topAnchor, constant: 8),
-            footer.leadingAnchor.constraint(equalTo: footerContainer.leadingAnchor, constant: 20),
-            footer.trailingAnchor.constraint(equalTo: footerContainer.trailingAnchor, constant: -20),
-            footer.bottomAnchor.constraint(equalTo: footerContainer.bottomAnchor, constant: -8),
-            footer.heightAnchor.constraint(equalToConstant: 64)
+            footer.topAnchor.constraint(equalTo: footerContainer.topAnchor, constant: Self.footerInset),
+            footer.leadingAnchor.constraint(equalTo: footerContainer.leadingAnchor, constant: Self.footerHorizontalInset),
+            footer.trailingAnchor.constraint(equalTo: footerContainer.trailingAnchor, constant: -Self.footerHorizontalInset),
+            footer.bottomAnchor.constraint(equalTo: footerContainer.bottomAnchor, constant: -Self.footerInset),
+            footer.heightAnchor.constraint(equalToConstant: Self.footerButtonHeight)
         ])
         controller?.didMove(toParent: self)
     }

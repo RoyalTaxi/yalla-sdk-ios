@@ -34,21 +34,22 @@ final class DatePickerSheet: Sheet {
         super.viewDidLoad()
         setUpDatePicker()
         setHeader(title: titleText, showClose: dismissEnabledFlag, action: doneButton.viewController)
-        setContent(datePicker, insets: UIEdgeInsets(top: 20, left: 16, bottom: 16, right: 16))
+        setContent(datePicker, insets: Self.contentInsets)
     }
 
     override func preferredContentHeight() -> CGFloat? {
-        // UIKit adds the bottom safe area to the custom detent — exclude it (header + insets 20+16 + picker).
-        72 + (20 + 16) + datePicker.intrinsicContentSize.height
+        Sheet.headerHeight + Self.contentInsets.top + Self.contentInsets.bottom + datePicker.intrinsicContentSize.height
     }
+
+    private static let contentInsets = UIEdgeInsets(top: 20, left: 16, bottom: 16, right: 16)
 
     private func setUpDatePicker() {
         datePicker.datePickerMode = .date
         datePicker.preferredDatePickerStyle = .wheels
         datePicker.timeZone = TimeZone(identifier: "UTC")
         datePicker.date = initialDate
-        if let minimumDateValue { datePicker.minimumDate = minimumDateValue }
-        if let maximumDateValue { datePicker.maximumDate = maximumDateValue }
+        datePicker.minimumDate = minimumDateValue
+        datePicker.maximumDate = maximumDateValue
     }
 
     private func confirmSelection() {

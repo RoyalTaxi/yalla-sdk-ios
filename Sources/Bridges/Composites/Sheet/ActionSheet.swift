@@ -7,6 +7,10 @@ final class ActionSheet: Sheet {
     private let onAction: (String) -> Void
     private let contentStack = UIStackView()
 
+    private let rowHeight: CGFloat = 64
+    private let rowSpacing: CGFloat = 10
+    private let contentInset: CGFloat = 12
+
     init(
         title: String,
         items: [ActionableItemModel],
@@ -23,18 +27,18 @@ final class ActionSheet: Sheet {
         super.viewDidLoad()
         setHeader(title: titleText, showClose: true)
         buildItems()
-        setContent(contentStack, insets: UIEdgeInsets(top: 12, left: 16, bottom: 12, right: 16))
+        setContent(contentStack, insets: UIEdgeInsets(top: contentInset, left: 16, bottom: contentInset, right: 16))
     }
 
     override func preferredContentHeight() -> CGFloat? {
         guard !items.isEmpty else { return nil }
-        let rows = CGFloat(items.count) * 64 + CGFloat(items.count - 1) * 10
-        return 72 + rows + 24
+        let rows = CGFloat(items.count) * rowHeight + CGFloat(items.count - 1) * rowSpacing
+        return Sheet.headerHeight + rows + contentInset * 2
     }
 
     private func buildItems() {
         contentStack.axis = .vertical
-        contentStack.spacing = 10
+        contentStack.spacing = rowSpacing
         for item in items {
             let controller = ActionableItemController(
                 text: item.text,
@@ -46,7 +50,7 @@ final class ActionSheet: Sheet {
             addChild(controller.viewController)
             let row = controller.viewController.view!
             row.translatesAutoresizingMaskIntoConstraints = false
-            row.heightAnchor.constraint(equalToConstant: 64).isActive = true
+            row.heightAnchor.constraint(equalToConstant: rowHeight).isActive = true
             contentStack.addArrangedSubview(row)
             controller.viewController.didMove(toParent: self)
         }

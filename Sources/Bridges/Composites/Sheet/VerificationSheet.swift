@@ -118,15 +118,8 @@ final class VerificationSheet: Sheet {
 
     private func buildContent() -> UIView {
         let headlineLabel = UILabel()
-        headlineLabel.text = headlineText
-        headlineLabel.font = YallaFonts.Title.base.uiFont
-        headlineLabel.textColor = UIColor.yalla("text_base")
-        headlineLabel.numberOfLines = 0
-
-        descriptionLabel.text = descriptionText
-        descriptionLabel.font = YallaFonts.Body.Base.medium.uiFont
-        descriptionLabel.textColor = UIColor.yalla("text_subtle")
-        descriptionLabel.numberOfLines = 0
+        configureLabel(headlineLabel, text: headlineText, font: YallaFonts.Title.base.uiFont, color: UIColor.yalla("text_base"))
+        configureLabel(descriptionLabel, text: descriptionText, font: YallaFonts.Body.Base.medium.uiFont, color: UIColor.yalla("text_subtle"))
 
         addChild(pinController.viewController)
         addChild(resendController.viewController)
@@ -148,6 +141,13 @@ final class VerificationSheet: Sheet {
             resendView.heightAnchor.constraint(equalToConstant: 44)
         ])
         return stack
+    }
+
+    private func configureLabel(_ label: UILabel, text: String, font: UIFont, color: UIColor?) {
+        label.text = text
+        label.font = font
+        label.textColor = color
+        label.numberOfLines = 0
     }
 
     private func handleCodeChange(_ newCode: String) {

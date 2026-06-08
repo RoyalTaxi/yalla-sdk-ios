@@ -13,6 +13,9 @@ final class ConfirmationSheet: Sheet {
     private let dismissEnabledFlag: Bool
     private let contentStack = UIStackView()
 
+    private let contentVerticalInset: CGFloat = 32
+    private let detentBottomSlack: CGFloat = 16
+
     init(
         imageResource: String,
         isDark: Bool,
@@ -54,9 +57,8 @@ final class ConfirmationSheet: Sheet {
             withHorizontalFittingPriority: .required,
             verticalFittingPriority: .fittingSizeLevel
         ).height
-        let header: CGFloat = dismissEnabledFlag ? 72 : 0
-        // UIKit adds the bottom safe area to the custom detent — exclude it (header + insets 16+16 + content + footer 80).
-        return header + 32 + fitting + 80
+        let header: CGFloat = dismissEnabledFlag ? Sheet.headerHeight : 0
+        return header + contentVerticalInset + fitting + Sheet.footerHeight + detentBottomSlack
     }
 
     private func buildContent() -> UIView {
@@ -66,19 +68,16 @@ final class ConfirmationSheet: Sheet {
         imageView.contentMode = .scaleAspectFit
         imageView.translatesAutoresizingMaskIntoConstraints = false
 
-        let titleLabel = UILabel()
-        titleLabel.text = titleText
-        titleLabel.font = YallaFonts.Title.base.uiFont
-        titleLabel.textColor = UIColor.yalla("text_base")
-        titleLabel.textAlignment = .center
-        titleLabel.numberOfLines = 0
-
-        let descriptionLabel = UILabel()
-        descriptionLabel.text = descriptionText
-        descriptionLabel.font = YallaFonts.Body.Base.medium.uiFont
-        descriptionLabel.textColor = UIColor.yalla("text_subtle")
-        descriptionLabel.textAlignment = .center
-        descriptionLabel.numberOfLines = 0
+        let titleLabel = centeredLabel(
+            text: titleText,
+            font: YallaFonts.Title.base.uiFont,
+            color: UIColor.yalla("text_base")
+        )
+        let descriptionLabel = centeredLabel(
+            text: descriptionText,
+            font: YallaFonts.Body.Base.medium.uiFont,
+            color: UIColor.yalla("text_subtle")
+        )
 
         contentStack.addArrangedSubview(imageView)
         contentStack.addArrangedSubview(titleLabel)
@@ -97,4 +96,13 @@ final class ConfirmationSheet: Sheet {
         return contentStack
     }
 
+    private func centeredLabel(text: String, font: UIFont, color: UIColor?) -> UILabel {
+        let label = UILabel()
+        label.text = text
+        label.font = font
+        label.textColor = color
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        return label
+    }
 }

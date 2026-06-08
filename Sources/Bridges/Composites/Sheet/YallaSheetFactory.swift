@@ -1,6 +1,26 @@
 import UIKit
 import YallaComponents
 
+private final class ReusableSheet<T: UIViewController> {
+    private let make: () -> T
+    private var reuseFirst = true
+    private(set) var viewController: T
+
+    init(_ make: @escaping () -> T) {
+        self.make = make
+        self.viewController = make()
+    }
+
+    func present(on parent: UIViewController) {
+        if reuseFirst { reuseFirst = false } else { viewController = make() }
+        parent.present(viewController, animated: true)
+    }
+
+    func dismiss() {
+        viewController.dismiss(animated: true)
+    }
+}
+
 public final class YallaSheetFactory: NSObject, SheetFactory {
     public override init() { super.init() }
 
@@ -10,7 +30,7 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         contentController: UIViewController,
         onDismissRequest: @escaping () -> Void
     ) -> ContentSheetHandle {
-        let make = {
+        let reusable = ReusableSheet {
             ContentSheet(
                 fullHeight: fullHeight,
                 sheetSwipeEnabled: sheetSwipeEnabled,
@@ -18,21 +38,11 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
                 onDismissRequest: onDismissRequest
             )
         }
-        var current = make()
-        var reuseFirst = true
-
         return ContentSheetHandle(
-            viewController: current,
-            present: { parent in
-                if reuseFirst { reuseFirst = false } else { current = make() }
-                parent.present(current, animated: true)
-            },
-            dismiss: {
-                current.dismiss(animated: true)
-            },
-            updateContentHeight: { height in
-                current.updateComposeContentHeight(CGFloat(truncating: height))
-            }
+            viewController: reusable.viewController,
+            present: { reusable.present(on: $0) },
+            dismiss: { reusable.dismiss() },
+            updateContentHeight: { reusable.viewController.updateComposeContentHeight(CGFloat(truncating: $0)) }
         )
     }
 
@@ -46,19 +56,13 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         onAction: @escaping () -> Void,
         onDismissRequest: @escaping () -> Void
     ) -> ConfirmationSheetHandle {
-        let make = { ConfirmationSheet(imageResource: imageResource, isDark: isDark, title: title, description: description, actionText: actionText, dismissEnabled: dismissEnabled, onAction: onAction, onDismissRequest: onDismissRequest) }
-        var current = make()
-        var reuseFirst = true
-
+        let reusable = ReusableSheet {
+            ConfirmationSheet(imageResource: imageResource, isDark: isDark, title: title, description: description, actionText: actionText, dismissEnabled: dismissEnabled, onAction: onAction, onDismissRequest: onDismissRequest)
+        }
         return ConfirmationSheetHandle(
-            viewController: current,
-            present: { parent in
-                if reuseFirst { reuseFirst = false } else { current = make() }
-                parent.present(current, animated: true)
-            },
-            dismiss: {
-                current.dismiss(animated: true)
-            }
+            viewController: reusable.viewController,
+            present: { reusable.present(on: $0) },
+            dismiss: { reusable.dismiss() }
         )
     }
 
@@ -69,20 +73,13 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         onSelect: @escaping (String) -> Void,
         onDismissRequest: @escaping () -> Void
     ) -> SelectionSheetHandle {
-        // Fresh VC per (re-)present — see createAction. Reusing one VC carries stale sheet state.
-        let make = { SelectionSheet(title: title, items: items, selectedId: selectedId, onSelect: onSelect, onDismissRequest: onDismissRequest) }
-        var current = make()
-        var reuseFirst = true
-
+        let reusable = ReusableSheet {
+            SelectionSheet(title: title, items: items, selectedId: selectedId, onSelect: onSelect, onDismissRequest: onDismissRequest)
+        }
         return SelectionSheetHandle(
-            viewController: current,
-            present: { parent in
-                if reuseFirst { reuseFirst = false } else { current = make() }
-                parent.present(current, animated: true)
-            },
-            dismiss: {
-                current.dismiss(animated: true)
-            }
+            viewController: reusable.viewController,
+            present: { reusable.present(on: $0) },
+            dismiss: { reusable.dismiss() }
         )
     }
 
@@ -92,22 +89,13 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         onAction: @escaping (String) -> Void,
         onDismissRequest: @escaping () -> Void
     ) -> ActionSheetHandle {
-        let make = { ActionSheet(title: title, items: items, onAction: onAction, onDismissRequest: onDismissRequest) }
-        var current = make()
-        var reuseFirst = true
-
+        let reusable = ReusableSheet {
+            ActionSheet(title: title, items: items, onAction: onAction, onDismissRequest: onDismissRequest)
+        }
         return ActionSheetHandle(
-            viewController: current,
-            present: { parent in
-                // Fresh VC per (re-)present: the binding remembers one handle, so reusing the same
-                // VC carries its UISheetPresentationController's stale gesture/detent state into the
-                // next open (jump to a previously-dragged height). A new instance starts clean.
-                if reuseFirst { reuseFirst = false } else { current = make() }
-                parent.present(current, animated: true)
-            },
-            dismiss: {
-                current.dismiss(animated: true)
-            }
+            viewController: reusable.viewController,
+            present: { reusable.present(on: $0) },
+            dismiss: { reusable.dismiss() }
         )
     }
 
@@ -120,20 +108,13 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         onSelect: @escaping (Date) -> Void,
         onDismissRequest: @escaping () -> Void
     ) -> DatePickerSheetHandle {
-        // Fresh VC per (re-)present — see createAction. Reusing one VC carries stale sheet state.
-        let make = { DatePickerSheet(startDate: startDate, minDate: minDate, maxDate: maxDate, title: title, dismissEnabled: dismissEnabled, onSelect: onSelect, onDismissRequest: onDismissRequest) }
-        var current = make()
-        var reuseFirst = true
-
+        let reusable = ReusableSheet {
+            DatePickerSheet(startDate: startDate, minDate: minDate, maxDate: maxDate, title: title, dismissEnabled: dismissEnabled, onSelect: onSelect, onDismissRequest: onDismissRequest)
+        }
         return DatePickerSheetHandle(
-            viewController: current,
-            present: { parent in
-                if reuseFirst { reuseFirst = false } else { current = make() }
-                parent.present(current, animated: true)
-            },
-            dismiss: {
-                current.dismiss(animated: true)
-            }
+            viewController: reusable.viewController,
+            present: { reusable.present(on: $0) },
+            dismiss: { reusable.dismiss() }
         )
     }
 

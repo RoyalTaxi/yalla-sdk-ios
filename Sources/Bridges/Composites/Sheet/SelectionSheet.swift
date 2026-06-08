@@ -9,6 +9,10 @@ final class SelectionSheet: Sheet {
     private let contentStack = UIStackView()
     private var rows: [(id: String, controller: SelectableItemController)] = []
 
+    private let rowHeight: CGFloat = 56
+    private let rowSpacing: CGFloat = 8
+    private let contentInset: CGFloat = 12
+
     init(
         title: String,
         items: [SelectableItemModel],
@@ -32,13 +36,13 @@ final class SelectionSheet: Sheet {
 
     override func preferredContentHeight() -> CGFloat? {
         guard !items.isEmpty else { return nil }
-        let rows = CGFloat(items.count) * 56 + CGFloat(items.count - 1) * 8
-        return 72 + rows + 24
+        let rowsHeight = CGFloat(items.count) * rowHeight + CGFloat(items.count - 1) * rowSpacing
+        return Sheet.headerHeight + rowsHeight + contentInset * 2
     }
 
     private func buildItems() {
         contentStack.axis = .vertical
-        contentStack.spacing = 8
+        contentStack.spacing = rowSpacing
         for item in items {
             let controller = SelectableItemController(
                 text: item.text,
@@ -50,7 +54,7 @@ final class SelectionSheet: Sheet {
             addChild(controller.viewController)
             let row = controller.viewController.view!
             row.translatesAutoresizingMaskIntoConstraints = false
-            row.heightAnchor.constraint(equalToConstant: 56).isActive = true
+            row.heightAnchor.constraint(equalToConstant: rowHeight).isActive = true
             contentStack.addArrangedSubview(row)
             controller.viewController.didMove(toParent: self)
             rows.append((id: item.id, controller: controller))
