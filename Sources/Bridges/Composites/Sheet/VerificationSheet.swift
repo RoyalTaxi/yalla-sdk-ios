@@ -105,10 +105,11 @@ final class VerificationSheet: Sheet {
     ) {
         self.code = code
         self.descriptionText = description
-        descriptionLabel.text = description
         self.isError = isError
         self.isLoading = isLoading
+        guard isViewLoaded else { return }
 
+        descriptionLabel.text = description
         pinController.setCode(code: code)
         pinController.setError(error: isError)
         resendController.setText(text: resendText)
