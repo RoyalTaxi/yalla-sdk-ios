@@ -189,6 +189,35 @@
         }
       }
     },
+    "home_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bosh sahifa"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Главная"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Бош саҳифа"
+          }
+        }
+      }
+    },
     "social_instagram": {
       "extractionState": "manual",
       "localizations": {
