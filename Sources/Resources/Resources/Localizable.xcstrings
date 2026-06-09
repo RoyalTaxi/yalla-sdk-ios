@@ -73,6 +73,122 @@
       },
       "shouldTranslate": false
     },
+    "language_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Til"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Language"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Язык"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тил"
+          }
+        }
+      }
+    },
+    "onboarding_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xush kelibsiz"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Welcome"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добро пожаловать"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Хуш келибсиз"
+          }
+        }
+      }
+    },
+    "permission_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruxsatlar"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permissions"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разрешения"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рухсатлар"
+          }
+        }
+      }
+    },
+    "menu_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menyu"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menu"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Меню"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Меню"
+          }
+        }
+      }
+    },
     "social_instagram": {
       "extractionState": "manual",
       "localizations": {
@@ -873,6 +989,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@%% гача"
+          }
+        }
+      }
+    },
+    "auth_login_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kirish"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Login"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вход"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кириш"
           }
         }
       }

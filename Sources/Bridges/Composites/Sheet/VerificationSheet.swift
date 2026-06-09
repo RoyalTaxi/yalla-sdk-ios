@@ -28,6 +28,7 @@ final class VerificationSheet: Sheet {
         code: code,
         error: isError,
         autoFocus: true,
+        horizontalPadding: 16,
         onValueChange: { [weak self] newCode in self?.handleCodeChange(newCode) }
     )
     private lazy var resendController = GhostButtonController(
@@ -84,7 +85,7 @@ final class VerificationSheet: Sheet {
     override func viewDidLoad() {
         super.viewDidLoad()
         setHeader(title: titleText, showClose: dismissEnabledFlag)
-        setScrollableContent(buildContent(), insets: UIEdgeInsets(top: 14, left: 16, bottom: 16, right: 16))
+        setScrollableContent(buildContent(), insets: UIEdgeInsets(top: 14, left: 0, bottom: 16, right: 0))
         pinController.viewController.didMove(toParent: self)
         resendController.viewController.didMove(toParent: self)
         setFooter(confirmController.viewController.view, controller: confirmController.viewController)
@@ -129,19 +130,40 @@ final class VerificationSheet: Sheet {
         pinView.translatesAutoresizingMaskIntoConstraints = false
         resendView.translatesAutoresizingMaskIntoConstraints = false
 
-        let stack = UIStackView(arrangedSubviews: [headlineLabel, descriptionLabel, pinView, resendView])
+        let headlineContainer = inset(headlineLabel, horizontal: 16)
+        let descriptionContainer = inset(descriptionLabel, horizontal: 16)
+        let resendContainer = inset(resendView, horizontal: 16)
+
+        let stack = UIStackView(arrangedSubviews: [headlineContainer, descriptionContainer, pinView, resendContainer])
         stack.axis = .vertical
         stack.alignment = .fill
         stack.spacing = 0
-        stack.setCustomSpacing(10, after: headlineLabel)
-        stack.setCustomSpacing(32, after: descriptionLabel)
+        stack.setCustomSpacing(10, after: headlineContainer)
+        stack.setCustomSpacing(32, after: descriptionContainer)
         stack.setCustomSpacing(8, after: pinView)
 
         NSLayoutConstraint.activate([
-            pinView.heightAnchor.constraint(equalTo: pinView.widthAnchor, multiplier: 1.0 / CGFloat(codeLength)),
+            pinView.heightAnchor.constraint(
+                equalTo: pinView.widthAnchor,
+                multiplier: 1.0 / CGFloat(codeLength),
+                constant: -32.0 / CGFloat(codeLength)
+            ),
             resendView.heightAnchor.constraint(equalToConstant: 44)
         ])
         return stack
+    }
+
+    private func inset(_ view: UIView, horizontal: CGFloat) -> UIView {
+        let container = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(view)
+        NSLayoutConstraint.activate([
+            view.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: horizontal),
+            view.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -horizontal),
+            view.topAnchor.constraint(equalTo: container.topAnchor),
+            view.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
+        return container
     }
 
     private func configureLabel(_ label: UILabel, text: String, font: UIFont, color: UIColor?) {
