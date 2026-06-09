@@ -89,7 +89,12 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
                 bounds = bounds.includingCoordinate(CLLocationCoordinate2D(latitude: p.lat, longitude: p.lng))
             }
             let baseMargin: CGFloat = 24
-            let insets = UIEdgeInsets(top: baseMargin, left: baseMargin, bottom: baseMargin, right: baseMargin)
+            let insets = UIEdgeInsets(
+                top: CGFloat(topPt) + baseMargin,
+                left: CGFloat(leftPt) + baseMargin,
+                bottom: CGFloat(bottomPt) + baseMargin,
+                right: CGFloat(rightPt) + baseMargin
+            )
             let update = GMSCameraUpdate.fit(bounds, with: insets)
             if animate { mv.animate(with: update) } else { mv.moveCamera(update) }
         }

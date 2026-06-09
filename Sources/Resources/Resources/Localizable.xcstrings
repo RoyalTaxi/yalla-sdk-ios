@@ -6451,25 +6451,25 @@
         "uz-Latn": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hozircha safarlar yo'q"
+            "value": "Hech narsa topilmadi, chamasi siz hali taksi chaqirmagansiz"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No trips yet"
+            "value": "We found nothing — it seems you haven't ordered a taxi yet"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Поездок пока нет"
+            "value": "Мы ничего не нашли, кажется вы еще не вызывали такси"
           }
         },
         "uz-Cyrl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ҳозирча сафарлар йўқ"
+            "value": "Ҳеч нарса топилмади, чамаси сиз ҳали такси чақирмагансиз"
           }
         }
       }
@@ -6615,6 +6615,180 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сафарни ўчириб бўлмади"
+          }
+        }
+      }
+    },
+    "history_detail_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Safar tafsilotlari"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trip details"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Детали поездки"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сафар тафсилотлари"
+          }
+        }
+      }
+    },
+    "history_label_date": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sana"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Дата"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сана"
+          }
+        }
+      }
+    },
+    "history_load_error": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Safarlarni yuklab bo'lmadi"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't load trips"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось загрузить поездки"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сафарларни юклаб бўлмади"
+          }
+        }
+      }
+    },
+    "history_delete_confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ushbu safarni o'chirishni xohlaysizmi?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Are you sure you want to delete this trip?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вы действительно хотите удалить эту поездку?"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ушбу сафарни ўчиришни хохлайсизми?"
+          }
+        }
+      }
+    },
+    "history_delete_warning": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Safar o'chirilgandan so'ng ma'lumotlarni tiklab bo'lmaydi"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This action cannot be undone"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "После удаления поездки восстановить все данные будет невозможно"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сафар ўчирилгандан сўнг маълумотларни тиклаб бўлмайди"
+          }
+        }
+      }
+    },
+    "history_delete_action": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ha, safarni o'chirish"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yes, delete trip"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Да, удалить поездку"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ҳа, сафарни ўчириш"
           }
         }
       }

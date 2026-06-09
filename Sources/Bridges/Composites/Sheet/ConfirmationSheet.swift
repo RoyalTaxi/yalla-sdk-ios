@@ -6,6 +6,7 @@ import YallaComponents
 final class ConfirmationSheet: Sheet {
     private let imageName: String
     private let isDarkAppearance: Bool
+    private let headerText: String?
     private let titleText: String
     private let descriptionText: String
     private let actionText: String
@@ -19,6 +20,7 @@ final class ConfirmationSheet: Sheet {
     init(
         imageResource: String,
         isDark: Bool,
+        header: String?,
         title: String,
         description: String,
         actionText: String,
@@ -28,6 +30,7 @@ final class ConfirmationSheet: Sheet {
     ) {
         self.imageName = imageResource
         self.isDarkAppearance = isDark
+        self.headerText = header
         self.titleText = title
         self.descriptionText = description
         self.actionText = actionText
@@ -38,7 +41,7 @@ final class ConfirmationSheet: Sheet {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        setHeader(title: nil, showClose: dismissEnabledFlag)
+        setHeader(title: headerText, showClose: dismissEnabledFlag)
         setContent(
             buildContent(),
             insets: UIEdgeInsets(top: 16, left: 36, bottom: 16, right: 36),
@@ -57,7 +60,7 @@ final class ConfirmationSheet: Sheet {
             withHorizontalFittingPriority: .required,
             verticalFittingPriority: .fittingSizeLevel
         ).height
-        let header: CGFloat = dismissEnabledFlag ? Sheet.headerHeight : 0
+        let header: CGFloat = (dismissEnabledFlag || headerText != nil) ? Sheet.headerHeight : 0
         return header + contentVerticalInset + fitting + Sheet.footerHeight + detentBottomSlack
     }
 

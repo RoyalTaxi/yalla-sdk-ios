@@ -19,6 +19,7 @@ class Sheet: UIViewController {
     private var footerZeroHeightConstraint: NSLayoutConstraint!
 
     private var measuredHeight: CGFloat?
+    private var hasReportedContentHeight = false
 
     static let headerHeight: CGFloat = 72
     static let footerHeight: CGFloat = 80
@@ -48,7 +49,11 @@ class Sheet: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        if sizesToContent { measuredHeight = preferredContentHeight()?.rounded() }
+        hasReportedContentHeight = false
+        if sizesToContent {
+            view.layoutIfNeeded()
+            measuredHeight = preferredContentHeight()?.rounded()
+        }
         applySheetPresentation()
     }
 
@@ -77,9 +82,15 @@ class Sheet: UIViewController {
         // from inside its measure pass via onSizeChanged; calling invalidateDetents synchronously
         // there throws an NSException from UIKit, which K/N propagates as an unhandled Throwable.
         if #available(iOS 16.0, *) {
+            let animate = hasReportedContentHeight
+            hasReportedContentHeight = true
             DispatchQueue.main.async { [weak self] in
                 guard let self, let sheet = self.sheetPresentationController else { return }
-                sheet.animateChanges { sheet.invalidateDetents() }
+                if animate {
+                    sheet.animateChanges { sheet.invalidateDetents() }
+                } else {
+                    sheet.invalidateDetents()
+                }
             }
         }
     }
@@ -90,7 +101,7 @@ class Sheet: UIViewController {
 
     func makeIconButton(icon: String, _ onTap: @escaping () -> Void) -> IconButtonHandle {
         YallaIconButtonFactory().create(
-            icon: icon, shape: .circle, iconArgb: 0, containerArgb: 0, onClick: onTap
+            icon: icon, shape: .circle, iconArgb: 0, containerArgb: 0, borderArgb: 0, onClick: onTap
         )
     }
 
@@ -239,7 +250,7 @@ class Sheet: UIViewController {
     private func buildScaffold() {
         headerContainer.backgroundColor = UIColor.yalla("background_base")
         footerContainer.backgroundColor = UIColor.yalla("background_base")
-        footerContainer.layer.cornerRadius = 28
+        footerContainer.layer.cornerRadius = 38
         footerContainer.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
         footerContainer.layer.masksToBounds = true
         contentContainer.clipsToBounds = true
