@@ -6,6 +6,37 @@ enum MapIconLoader {
 
     private static let cache = NSCache<NSString, UIImage>()
 
+    static let userLocationDotImage: UIImage = {
+        let size = CGSize(width: 16, height: 16)
+        let strokeWidth: CGFloat = 2 / UIScreen.main.scale
+        let start = UIColor(red: 0x34 / 255.0, green: 0, blue: 1, alpha: 1)
+        let end = UIColor(red: 0x88 / 255.0, green: 0x6B / 255.0, blue: 1, alpha: 1)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { context in
+            let ctx = context.cgContext
+            let rect = CGRect(origin: .zero, size: size).insetBy(dx: strokeWidth / 2, dy: strokeWidth / 2)
+            let colorSpace = CGColorSpaceCreateDeviceRGB()
+            let top = CGPoint(x: size.width / 2, y: 0)
+            let bottom = CGPoint(x: size.width / 2, y: size.height)
+            if let fill = CGGradient(colorsSpace: colorSpace, colors: [start.cgColor, end.cgColor] as CFArray, locations: [0, 1]) {
+                ctx.saveGState()
+                ctx.addEllipse(in: rect)
+                ctx.clip()
+                ctx.drawLinearGradient(fill, start: top, end: bottom, options: [])
+                ctx.restoreGState()
+            }
+            if let stroke = CGGradient(colorsSpace: colorSpace, colors: [end.cgColor, start.cgColor] as CFArray, locations: [0, 1]) {
+                ctx.saveGState()
+                ctx.setLineWidth(strokeWidth)
+                ctx.addEllipse(in: rect)
+                ctx.replacePathWithStrokedPath()
+                ctx.clip()
+                ctx.drawLinearGradient(stroke, start: top, end: bottom, options: [])
+                ctx.restoreGState()
+            }
+        }
+    }()
+
     static func uiImage(for icon: MapMarkerIcon) -> UIImage? {
         let key = cacheKey(for: icon) as NSString
         if let cached = cache.object(forKey: key) { return cached }

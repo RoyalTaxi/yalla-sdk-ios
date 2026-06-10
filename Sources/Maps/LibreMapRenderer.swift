@@ -15,6 +15,11 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     private var pendingPadding = UIEdgeInsets.zero
     private var lastEmittedCenter: CLLocationCoordinate2D?
     private var warnedCirclesUnsupported = false
+    private var interactionEnabled = true
+    private var pendingUserLocation: GeoPoint?
+    private var userLocationAnnotation: MLNPointAnnotation?
+    private var userLocationSource: MLNShapeSource?
+    private var userLocationLayer: MLNCircleStyleLayer?
 
     private var renderedAnnotations: [String: MLNAnnotation] = [:]
     private var markerImages: [String: UIImage] = [:]
@@ -38,13 +43,20 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             mv.delegate = self
             mv.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             mv.automaticallyAdjustsContentInset = false
+            mv.compassView.isHidden = true
+            mv.isRotateEnabled = false
+            mv.isPitchEnabled = false
+            mv.minimumZoomLevel = MapConstants.shared.ZOOM_MIN
+            mv.maximumZoomLevel = MapConstants.shared.ZOOM_MAX
             let tap = UITapGestureRecognizer(target: self, action: #selector(handleSingleTap(_:)))
             tap.require(toFail: mv.gestureRecognizers?.first(where: { $0 is UITapGestureRecognizer && ($0 as? UITapGestureRecognizer)?.numberOfTapsRequired == 2 }) ?? UITapGestureRecognizer())
             mv.addGestureRecognizer(tap)
             let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
             mv.addGestureRecognizer(longPress)
             mapView = mv
+            applyInteractionEnabled()
             applyPadding()
+            renderUserLocation()
         }
         return MapHostViewController(mapSubview: mapView!)
     }
@@ -87,7 +99,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         runOnMain {
             self.mapView?.setCenter(
                 CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng),
-                zoomLevel: Double(zoom),
+                zoomLevel: Double(self.clampZoom(zoom)),
                 animated: false
             )
         }
@@ -102,7 +114,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
                 pitch: mv.camera.pitch,
                 heading: mv.camera.heading
             )
-            mv.setZoomLevel(Double(zoom), animated: false)
+            mv.setZoomLevel(Double(self.clampZoom(zoom)), animated: false)
             mv.setCamera(cam, withDuration: Double(durationMs) / 1000.0, animationTimingFunction: nil)
         }
     }
@@ -116,28 +128,29 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
                 pitch: mv.camera.pitch,
                 heading: CLLocationDirection(bearing)
             )
-            mv.setZoomLevel(Double(zoom), animated: false)
+            mv.setZoomLevel(Double(self.clampZoom(zoom)), animated: false)
             mv.setCamera(cam, withDuration: Double(durationMs) / 1000.0, animationTimingFunction: nil)
         }
     }
 
     public func fitBounds(points: [GeoPoint], leftPt: Float, topPt: Float, rightPt: Float, bottomPt: Float, animate: Bool) {
-        guard !points.isEmpty else { return }
-        if points.count == 1 {
-            let single = points[0]
+        let valid = points.filter { $0.lat != 0 || $0.lng != 0 }
+        guard !valid.isEmpty else { return }
+        if valid.count == 1 {
+            let single = valid[0]
             runOnMain {
-                let zoom = self.mapView?.zoomLevel ?? 15
+                let zoom = Double(self.clampZoom(Float(self.mapView?.zoomLevel ?? 15)))
                 self.mapView?.setCenter(
                     CLLocationCoordinate2D(latitude: single.lat, longitude: single.lng),
                     zoomLevel: zoom,
-                    animated: false
+                    animated: animate
                 )
             }
             return
         }
         runOnMain {
             guard let mv = self.mapView else { return }
-            var coords = points.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng) }
+            var coords = valid.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng) }
             let baseMargin: CGFloat = 24
             let insets = UIEdgeInsets(
                 top: CGFloat(topPt) + baseMargin,
@@ -157,19 +170,19 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     public func zoomIn() {
         runOnMain {
             guard let mv = self.mapView else { return }
-            mv.setZoomLevel(mv.zoomLevel + 1, animated: true)
+            mv.setZoomLevel(Double(self.clampZoom(Float(mv.zoomLevel + 1))), animated: true)
         }
     }
 
     public func zoomOut() {
         runOnMain {
             guard let mv = self.mapView else { return }
-            mv.setZoomLevel(mv.zoomLevel - 1, animated: true)
+            mv.setZoomLevel(Double(self.clampZoom(Float(mv.zoomLevel - 1))), animated: true)
         }
     }
 
     public func setZoom(zoom: Float) {
-        runOnMain { self.mapView?.setZoomLevel(Double(zoom), animated: true) }
+        runOnMain { self.mapView?.setZoomLevel(Double(self.clampZoom(zoom)), animated: true) }
     }
 
     public func setStyleUrl(url: String) {
@@ -187,12 +200,18 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             self.markerImages.removeAll()
             self.sharedIconKeys.removeAll()
             self.sharedIconReuseIds.removeAll()
+            self.userLocationAnnotation = nil
+            self.userLocationSource = nil
+            self.userLocationLayer = nil
             mv.styleURL = parsed
         }
     }
 
     public func setStyleJson(json: String) {
         // MapLibre iOS accepts JSON via MLNStyle.styleJSON — but routing is rare in practice; ignore.
+    }
+
+    public func setColorScheme(isDark: Bool) {
     }
 
     private func runOnMain(_ block: @escaping () -> Void) {
@@ -208,6 +227,13 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             right: CGFloat(rightPt)
         )
         applyPadding()
+    }
+
+    public func setInteractionEnabled(enabled: Bool) {
+        runOnMain {
+            self.interactionEnabled = enabled
+            self.applyInteractionEnabled()
+        }
     }
 
     public func setMarkers(markers: [MapMarker]) {
@@ -230,6 +256,12 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         }
     }
 
+    public func setUserLocation(point: GeoPoint?) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        pendingUserLocation = point
+        if mapView != nil { renderUserLocation() }
+    }
+
     public func close() {
         dispatchPrecondition(condition: .onQueue(.main))
         if closed { return }
@@ -238,7 +270,12 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         if let style = style {
             routeLayers.values.forEach { style.removeLayer($0) }
             routeSources.values.forEach { style.removeSource($0) }
+            if let layer = userLocationLayer { style.removeLayer(layer) }
+            if let source = userLocationSource { style.removeSource(source) }
         }
+        userLocationAnnotation = nil
+        userLocationLayer = nil
+        userLocationSource = nil
         routeLayers.removeAll()
         routeSources.removeAll()
         renderedAnnotations.removeAll()
@@ -256,6 +293,18 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     private func applyPadding() {
         guard let mv = mapView else { return }
         mv.contentInset = pendingPadding
+    }
+
+    private func applyInteractionEnabled() {
+        guard let mv = mapView else { return }
+        mv.isScrollEnabled = interactionEnabled
+        mv.isZoomEnabled = interactionEnabled
+        mv.isRotateEnabled = false
+        mv.isPitchEnabled = false
+    }
+
+    private func clampZoom(_ zoom: Float) -> Float {
+        return min(max(zoom, Float(MapConstants.shared.ZOOM_MIN)), Float(MapConstants.shared.ZOOM_MAX))
     }
 
     private func renderMarkers(markers: [MapMarker]) {
@@ -337,10 +386,59 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         }
     }
 
+    private func renderUserLocation() {
+        guard let mv = mapView else { return }
+        guard let point = pendingUserLocation else {
+            if let annotation = userLocationAnnotation { mv.removeAnnotation(annotation) }
+            userLocationAnnotation = nil
+            if let style = style {
+                if let layer = userLocationLayer { style.removeLayer(layer) }
+                if let source = userLocationSource { style.removeSource(source) }
+            }
+            userLocationLayer = nil
+            userLocationSource = nil
+            return
+        }
+        let coordinate = CLLocationCoordinate2D(latitude: point.lat, longitude: point.lng)
+        if let annotation = userLocationAnnotation {
+            annotation.coordinate = coordinate
+        } else {
+            let annotation = MLNPointAnnotation()
+            annotation.coordinate = coordinate
+            mv.addAnnotation(annotation)
+            userLocationAnnotation = annotation
+        }
+        guard let style = style else { return }
+        let feature = MLNPointFeature()
+        feature.coordinate = coordinate
+        let radiusAtZoomZero = 50.0 / (156543.03392 * cos(point.lat * .pi / 180.0))
+        let stops: [NSNumber: NSNumber] = [
+            0: NSNumber(value: radiusAtZoomZero),
+            22: NSNumber(value: radiusAtZoomZero * 4194304.0)
+        ]
+        let radiusExpression = NSExpression(format: "mgl_interpolate:withCurveType:parameters:stops:($zoomLevel, 'exponential', 2, %@)", stops)
+        if let source = userLocationSource {
+            source.shape = feature
+            userLocationLayer?.circleRadius = radiusExpression
+        } else {
+            let source = MLNShapeSource(identifier: "yalla-user-location-src", shape: feature, options: nil)
+            style.addSource(source)
+            let layer = MLNCircleStyleLayer(identifier: "yalla-user-location-lyr", source: source)
+            layer.circleRadius = radiusExpression
+            layer.circleColor = NSExpression(forConstantValue: uiColor(fromArgb: 0x33562DF8))
+            layer.circleStrokeColor = NSExpression(forConstantValue: uiColor(fromArgb: 0x66562DF8))
+            layer.circleStrokeWidth = NSExpression(forConstantValue: 1)
+            style.addLayer(layer)
+            userLocationSource = source
+            userLocationLayer = layer
+        }
+    }
+
     public func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
         self.style = style
         renderMarkers(markers: pendingMarkers)
         renderRoutes(routes: pendingRoutes)
+        renderUserLocation()
         listener?.onReady()
     }
 
@@ -382,6 +480,10 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     }
 
     public func mapView(_ mapView: MLNMapView, imageFor annotation: MLNAnnotation) -> MLNAnnotationImage? {
+        if let pointAnnotation = annotation as? MLNPointAnnotation, pointAnnotation === userLocationAnnotation {
+            if let cached = mapView.dequeueReusableAnnotationImage(withIdentifier: "yalla-user-location-dot") { return cached }
+            return MLNAnnotationImage(image: MapIconLoader.userLocationDotImage, reuseIdentifier: "yalla-user-location-dot")
+        }
         guard let id = annotation.title.flatMap({ $0 }) else { return nil }
         guard let sharedKey = sharedIconKeys[id], let image = markerImages[sharedKey] else { return nil }
         if let cached = mapView.dequeueReusableAnnotationImage(withIdentifier: sharedKey) { return cached }

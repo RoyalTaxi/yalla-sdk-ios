@@ -13,6 +13,11 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
     private var pendingCircles: [MapCircle] = []
     private var pendingPadding = UIEdgeInsets.zero
     private var lastEmittedCamera: GMSCameraPosition?
+    private var interactionEnabled = true
+    private var pendingIsDark = false
+    private var pendingUserLocation: GeoPoint?
+    private var userLocationMarker: GMSMarker?
+    private var userLocationCircle: GMSCircle?
 
     private var renderedMarkers: [String: GMSMarker] = [:]
     private var renderedRoutes: [String: GMSPolyline] = [:]
@@ -30,11 +35,19 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
             let mv = GMSMapView(options: GMSMapViewOptions())
             mv.delegate = self
             mv.paddingAdjustmentBehavior = .never
+            mv.settings.compassButton = false
+            mv.settings.rotateGestures = false
+            mv.settings.tiltGestures = false
+            mv.isBuildingsEnabled = false
+            mv.setMinZoom(Float(MapConstants.shared.ZOOM_MIN), maxZoom: Float(MapConstants.shared.ZOOM_MAX))
             mapView = mv
+            applyInteractionEnabled()
             applyPadding()
+            applyColorScheme()
             renderMarkers(markers: pendingMarkers)
             renderRoutes(routes: pendingRoutes)
             renderCircles(circles: pendingCircles)
+            renderUserLocation()
             DispatchQueue.main.async { [weak self] in self?.listener?.onReady() }
         }
         return MapHostViewController(mapSubview: mapView!)
@@ -46,14 +59,26 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
 
     public func moveTo(target: GeoPoint, zoom: Float) {
         runOnMain {
-            let cam = GMSCameraPosition.camera(withLatitude: target.lat, longitude: target.lng, zoom: zoom)
+            let current = self.mapView?.camera
+            let cam = GMSCameraPosition(
+                target: CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng),
+                zoom: self.clampZoom(zoom),
+                bearing: current?.bearing ?? 0,
+                viewingAngle: current?.viewingAngle ?? 0
+            )
             self.mapView?.camera = cam
         }
     }
 
     public func animateTo(target: GeoPoint, zoom: Float, durationMs: Int32) {
         runOnMain {
-            let cam = GMSCameraPosition.camera(withLatitude: target.lat, longitude: target.lng, zoom: zoom)
+            let current = self.mapView?.camera
+            let cam = GMSCameraPosition(
+                target: CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng),
+                zoom: self.clampZoom(zoom),
+                bearing: current?.bearing ?? 0,
+                viewingAngle: current?.viewingAngle ?? 0
+            )
             self.mapView?.animate(to: cam)
         }
     }
@@ -63,7 +88,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
             guard let mv = self.mapView else { return }
             let cam = GMSCameraPosition(
                 target: CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng),
-                zoom: zoom,
+                zoom: self.clampZoom(zoom),
                 bearing: CLLocationDirection(bearing),
                 viewingAngle: Double(mv.camera.viewingAngle)
             )
@@ -72,20 +97,27 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
     }
 
     public func fitBounds(points: [GeoPoint], leftPt: Float, topPt: Float, rightPt: Float, bottomPt: Float, animate: Bool) {
-        guard !points.isEmpty else { return }
-        if points.count == 1 {
-            let single = points[0]
+        let valid = points.filter { $0.lat != 0 || $0.lng != 0 }
+        guard !valid.isEmpty else { return }
+        if valid.count == 1 {
+            let single = valid[0]
             runOnMain {
-                let zoom = self.mapView?.camera.zoom ?? 15
-                let cam = GMSCameraPosition.camera(withLatitude: single.lat, longitude: single.lng, zoom: zoom)
-                self.mapView?.camera = cam
+                let current = self.mapView?.camera
+                let zoom = self.clampZoom(current?.zoom ?? 15)
+                let cam = GMSCameraPosition(
+                    target: CLLocationCoordinate2D(latitude: single.lat, longitude: single.lng),
+                    zoom: zoom,
+                    bearing: current?.bearing ?? 0,
+                    viewingAngle: current?.viewingAngle ?? 0
+                )
+                if animate { self.mapView?.animate(to: cam) } else { self.mapView?.camera = cam }
             }
             return
         }
         runOnMain {
             guard let mv = self.mapView else { return }
             var bounds = GMSCoordinateBounds()
-            for p in points {
+            for p in valid {
                 bounds = bounds.includingCoordinate(CLLocationCoordinate2D(latitude: p.lat, longitude: p.lng))
             }
             let baseMargin: CGFloat = 24
@@ -103,23 +135,22 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
     public func zoomIn() {
         runOnMain {
             guard let mv = self.mapView else { return }
-            mv.animate(toZoom: mv.camera.zoom + 1)
+            mv.animate(toZoom: self.clampZoom(mv.camera.zoom + 1))
         }
     }
 
     public func zoomOut() {
         runOnMain {
             guard let mv = self.mapView else { return }
-            mv.animate(toZoom: mv.camera.zoom - 1)
+            mv.animate(toZoom: self.clampZoom(mv.camera.zoom - 1))
         }
     }
 
     public func setZoom(zoom: Float) {
-        runOnMain { self.mapView?.animate(toZoom: zoom) }
+        runOnMain { self.mapView?.animate(toZoom: self.clampZoom(zoom)) }
     }
 
     public func setStyleUrl(url: String) {
-        // Google Maps iOS does not support remote style URLs; ignore.
     }
 
     public func setStyleJson(json: String) {
@@ -128,8 +159,22 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         }
     }
 
+    public func setColorScheme(isDark: Bool) {
+        runOnMain {
+            self.pendingIsDark = isDark
+            self.applyColorScheme()
+        }
+    }
+
     private func runOnMain(_ block: @escaping () -> Void) {
         if Thread.isMainThread { block() } else { DispatchQueue.main.async(execute: block) }
+    }
+
+    public func setInteractionEnabled(enabled: Bool) {
+        runOnMain {
+            self.interactionEnabled = enabled
+            self.applyInteractionEnabled()
+        }
     }
 
     public func setPaddingPt(leftPt: Float, topPt: Float, rightPt: Float, bottomPt: Float) {
@@ -161,6 +206,12 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         if mapView != nil { renderCircles(circles: circles) }
     }
 
+    public func setUserLocation(point: GeoPoint?) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        pendingUserLocation = point
+        if mapView != nil { renderUserLocation() }
+    }
+
     public func close() {
         dispatchPrecondition(condition: .onQueue(.main))
         if closed { return }
@@ -174,6 +225,10 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         markerData.removeAll()
         routeData.removeAll()
         circleData.removeAll()
+        userLocationMarker?.map = nil
+        userLocationCircle?.map = nil
+        userLocationMarker = nil
+        userLocationCircle = nil
         mapView?.delegate = nil
         mapView?.removeFromSuperview()
         mapView = nil
@@ -181,6 +236,24 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
 
     private func applyPadding() {
         mapView?.padding = pendingPadding
+    }
+
+    private func applyInteractionEnabled() {
+        guard let mv = mapView else { return }
+        mv.settings.scrollGestures = interactionEnabled
+        mv.settings.zoomGestures = interactionEnabled
+        mv.settings.rotateGestures = false
+        mv.settings.tiltGestures = false
+    }
+
+    private func applyColorScheme() {
+        if #available(iOS 13.0, *) {
+            mapView?.overrideUserInterfaceStyle = pendingIsDark ? .dark : .light
+        }
+    }
+
+    private func clampZoom(_ zoom: Float) -> Float {
+        return min(max(zoom, Float(MapConstants.shared.ZOOM_MIN)), Float(MapConstants.shared.ZOOM_MAX))
     }
 
     private func renderMarkers(markers: [MapMarker]) {
@@ -296,6 +369,39 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         }
     }
 
+    private func renderUserLocation() {
+        guard let map = mapView else { return }
+        guard let point = pendingUserLocation else {
+            userLocationMarker?.map = nil
+            userLocationCircle?.map = nil
+            userLocationMarker = nil
+            userLocationCircle = nil
+            return
+        }
+        let coordinate = CLLocationCoordinate2D(latitude: point.lat, longitude: point.lng)
+        if let marker = userLocationMarker {
+            marker.position = coordinate
+        } else {
+            let marker = GMSMarker(position: coordinate)
+            marker.groundAnchor = CGPoint(x: 0.5, y: 0.5)
+            marker.isFlat = false
+            marker.isTappable = false
+            marker.icon = MapIconLoader.userLocationDotImage
+            marker.map = map
+            userLocationMarker = marker
+        }
+        if let circle = userLocationCircle {
+            circle.position = coordinate
+        } else {
+            let circle = GMSCircle(position: coordinate, radius: 50)
+            circle.fillColor = uiColor(fromArgb: 0x33562DF8)
+            circle.strokeColor = uiColor(fromArgb: 0x66562DF8)
+            circle.strokeWidth = 1
+            circle.map = map
+            userLocationCircle = circle
+        }
+    }
+
     private func uiColor(fromArgb argb: Int32) -> UIColor {
         let value = UInt32(bitPattern: argb)
         let a = CGFloat((value >> 24) & 0xFF) / 255.0
@@ -326,7 +432,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         if let id = renderedMarkers.first(where: { $0.value === marker })?.key {
             listener?.onMarkerTapped(id: id)
         }
-        return true
+        return false
     }
 
     public func mapView(_ mapView: GMSMapView, didTapAt coordinate: CLLocationCoordinate2D) {
