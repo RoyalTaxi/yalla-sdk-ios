@@ -194,10 +194,18 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         for (id, marker) in incoming {
             let previous = markerData[id]
             if let existing = renderedMarkers[id] {
-                if previous?.point != marker.point {
+                let moved = previous?.point != marker.point || previous?.rotation != marker.rotation
+                if moved && marker.flat {
+                    CATransaction.begin()
+                    CATransaction.setAnimationDuration(1.0)
+                    CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .linear))
                     existing.position = CLLocationCoordinate2D(latitude: marker.point.lat, longitude: marker.point.lng)
+                    existing.rotation = shortestRotation(from: existing.rotation, to: CLLocationDegrees(marker.rotation))
+                    CATransaction.commit()
+                } else if moved {
+                    existing.position = CLLocationCoordinate2D(latitude: marker.point.lat, longitude: marker.point.lng)
+                    existing.rotation = CLLocationDegrees(marker.rotation)
                 }
-                if previous?.rotation != marker.rotation { existing.rotation = CLLocationDegrees(marker.rotation) }
                 if previous?.anchor != marker.anchor {
                     existing.groundAnchor = CGPoint(x: CGFloat(marker.anchor.x), y: CGFloat(marker.anchor.y))
                 }
@@ -220,6 +228,15 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
             }
             markerData[id] = marker
         }
+    }
+
+    private func shortestRotation(from: CLLocationDegrees, to: CLLocationDegrees) -> CLLocationDegrees {
+        let fromNorm = from.truncatingRemainder(dividingBy: 360)
+        let toNorm = to.truncatingRemainder(dividingBy: 360)
+        var delta = toNorm - fromNorm
+        if delta > 180 { delta -= 360 }
+        if delta < -180 { delta += 360 }
+        return from + delta
     }
 
     private func renderRoutes(routes: [MapRoute]) {
