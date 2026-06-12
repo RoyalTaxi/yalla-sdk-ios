@@ -158,12 +158,15 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
                 bottom: CGFloat(bottomPt) + baseMargin,
                 right: CGFloat(rightPt) + baseMargin
             )
+            let previousMax = mv.maximumZoomLevel
+            mv.maximumZoomLevel = MapConstants.shared.FIT_ZOOM_MAX
             mv.setVisibleCoordinates(
                 &coords,
                 count: UInt(coords.count),
                 edgePadding: insets,
                 animated: animate
             )
+            mv.maximumZoomLevel = previousMax
         }
     }
 

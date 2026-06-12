@@ -127,8 +127,14 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
                 bottom: CGFloat(bottomPt) + baseMargin,
                 right: CGFloat(rightPt) + baseMargin
             )
-            let update = GMSCameraUpdate.fit(bounds, with: insets)
-            if animate { mv.animate(with: update) } else { mv.moveCamera(update) }
+            guard let fitted = mv.camera(for: bounds, insets: insets) else { return }
+            let cam = GMSCameraPosition(
+                target: fitted.target,
+                zoom: min(fitted.zoom, Float(MapConstants.shared.FIT_ZOOM_MAX)),
+                bearing: fitted.bearing,
+                viewingAngle: fitted.viewingAngle
+            )
+            if animate { mv.animate(to: cam) } else { mv.camera = cam }
         }
     }
 
