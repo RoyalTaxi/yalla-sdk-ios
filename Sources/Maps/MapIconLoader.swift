@@ -47,6 +47,8 @@ enum MapIconLoader {
                 ?? UIImage(named: resource.name)
         } else if let pin = icon as? MapMarkerIcon.Pin {
             image = pinImage(for: pin)
+        } else if let dot = icon as? MapMarkerIcon.Dot {
+            image = dotImage(for: dot)
         } else if let bytes = icon as? MapMarkerIcon.Bytes {
             let kotlinArray = bytes.data
             let count = Int(kotlinArray.size)
@@ -60,6 +62,33 @@ enum MapIconLoader {
         }
         if let resolved = image { cache.setObject(resolved, forKey: key) }
         return image
+    }
+
+    private static func dotImage(for dot: MapMarkerIcon.Dot) -> UIImage {
+        let strokeWidth = CGFloat(dot.strokeWidthDp)
+        let side = CGFloat(dot.diameterDp) + strokeWidth
+        let size = CGSize(width: side, height: side)
+        let fillColor = UIColor(
+            red: CGFloat((dot.fillColorArgb >> 16) & 0xFF) / 255.0,
+            green: CGFloat((dot.fillColorArgb >> 8) & 0xFF) / 255.0,
+            blue: CGFloat(dot.fillColorArgb & 0xFF) / 255.0,
+            alpha: CGFloat((dot.fillColorArgb >> 24) & 0xFF) / 255.0
+        )
+        let strokeColor = UIColor(
+            red: CGFloat((dot.strokeColorArgb >> 16) & 0xFF) / 255.0,
+            green: CGFloat((dot.strokeColorArgb >> 8) & 0xFF) / 255.0,
+            blue: CGFloat(dot.strokeColorArgb & 0xFF) / 255.0,
+            alpha: CGFloat((dot.strokeColorArgb >> 24) & 0xFF) / 255.0
+        )
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { context in
+            let rect = CGRect(origin: .zero, size: size).insetBy(dx: strokeWidth / 2, dy: strokeWidth / 2)
+            fillColor.setFill()
+            context.cgContext.fillEllipse(in: rect)
+            strokeColor.setStroke()
+            context.cgContext.setLineWidth(strokeWidth)
+            context.cgContext.strokeEllipse(in: rect)
+        }
     }
 
     private static func pinImage(for pin: MapMarkerIcon.Pin) -> UIImage {
@@ -117,6 +146,7 @@ enum MapIconLoader {
     private static func cacheKey(for icon: MapMarkerIcon) -> String {
         if let res = icon as? MapMarkerIcon.Resource { return "res-\(res.name)" }
         if let pin = icon as? MapMarkerIcon.Pin { return "pin-\(pin.colorArgb)-\(pin.label ?? "")" }
+        if let dot = icon as? MapMarkerIcon.Dot { return "dot-\(dot.fillColorArgb)-\(dot.strokeColorArgb)-\(dot.diameterDp)-\(dot.strokeWidthDp)" }
         if let bytes = icon as? MapMarkerIcon.Bytes {
             return "bytes-\(bytes.data.hashValue)"
         }

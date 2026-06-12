@@ -501,8 +501,14 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
 
     private func sharedIconKey(for icon: MapMarkerIcon) -> String {
         if let res = icon as? MapMarkerIcon.Resource { return "yalla-icon-res-\(res.name)" }
+        if let pin = icon as? MapMarkerIcon.Pin {
+            return "yalla-icon-pin-\(pin.colorArgb)-\(pin.label ?? "")"
+        }
         if let bytes = icon as? MapMarkerIcon.Bytes {
             return "yalla-icon-bytes-\(bytes.data.hashValue)"
+        }
+        if let dot = icon as? MapMarkerIcon.Dot {
+            return "yalla-icon-dot-\(dot.fillColorArgb)-\(dot.strokeColorArgb)-\(dot.diameterDp)-\(dot.strokeWidthDp)"
         }
         return "yalla-icon-unknown"
     }
