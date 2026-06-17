@@ -18,10 +18,6 @@ let package = Package(
             targets: ["Design"]
         ),
         .library(
-            name: "Components",
-            targets: ["Components"]
-        ),
-        .library(
             name: "Bridges",
             targets: ["Bridges"]
         ),
@@ -52,17 +48,10 @@ let package = Package(
             path: "Sources/Design"
         ),
         .target(
-            name: "Components",
-            dependencies: [
-                "Design",
-                "Resources"
-            ],
-            path: "Sources/Components"
-        ),
-        .target(
             name: "Bridges",
             dependencies: [
-                "Components",
+                "Design",
+                "Resources",
                 "YallaComponents"
             ],
             path: "Sources/Bridges"
