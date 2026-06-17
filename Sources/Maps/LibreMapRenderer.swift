@@ -334,8 +334,14 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
                 }
                 sharedIconKeys[id] = key
             }
-            if previous == nil || previous?.point != marker.point {
-                if let ann = renderedAnnotations.removeValue(forKey: id) { mv.removeAnnotation(ann) }
+            if let existing = renderedAnnotations[id] {
+                if previous?.point != marker.point {
+                    existing.coordinate = CLLocationCoordinate2D(latitude: marker.point.lat, longitude: marker.point.lng)
+                }
+                if previous?.contentDescription != marker.contentDescription {
+                    existing.subtitle = marker.contentDescription
+                }
+            } else {
                 let ann = MLNPointAnnotation()
                 ann.coordinate = CLLocationCoordinate2D(latitude: marker.point.lat, longitude: marker.point.lng)
                 ann.title = id
