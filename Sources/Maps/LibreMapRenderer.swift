@@ -30,6 +30,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     private var routeSources: [String: MLNShapeSource] = [:]
     private var routeLayers: [String: MLNLineStyleLayer] = [:]
     private var userInitiatedMove = false
+    private lazy var motion = MarkerMotionDriver { [weak self] poses in self?.applyAnnotationPoses(poses) }
 
     public init(styleURL: String) {
         self.styleURL = styleURL
@@ -193,6 +194,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             guard let parsed = URL(string: url) else { return }
             guard let mv = self.mapView else { return }
             if mv.styleURL == parsed { return }
+            self.motion.clear()
             self.style = nil
             self.routeSources.removeAll()
             self.routeLayers.removeAll()
@@ -269,6 +271,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         dispatchPrecondition(condition: .onQueue(.main))
         if closed { return }
         closed = true
+        motion.clear()
         if let mv = mapView, let annotations = mv.annotations { mv.removeAnnotations(annotations) }
         if let style = style {
             routeLayers.values.forEach { style.removeLayer($0) }
@@ -336,7 +339,11 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             }
             if let existing = renderedAnnotations[id] {
                 if previous?.point != marker.point {
-                    existing.coordinate = CLLocationCoordinate2D(latitude: marker.point.lat, longitude: marker.point.lng)
+                    if marker.flat {
+                        motion.push(id: id, point: marker.point, heading: marker.rotation)
+                    } else {
+                        existing.coordinate = CLLocationCoordinate2D(latitude: marker.point.lat, longitude: marker.point.lng)
+                    }
                 }
                 if previous?.contentDescription != marker.contentDescription {
                     existing.subtitle = marker.contentDescription
@@ -348,8 +355,17 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
                 ann.subtitle = marker.contentDescription
                 mv.addAnnotation(ann)
                 renderedAnnotations[id] = ann
+                if marker.flat { motion.push(id: id, point: marker.point, heading: marker.rotation) }
             }
             markerData[id] = marker
+        }
+        motion.retain(ids: Set(incoming.values.filter { $0.flat }.map { $0.id }))
+        motion.ensureRunning()
+    }
+
+    private func applyAnnotationPoses(_ poses: [String: Pose]) {
+        for (id, pose) in poses {
+            renderedAnnotations[id]?.coordinate = CLLocationCoordinate2D(latitude: pose.point.lat, longitude: pose.point.lng)
         }
     }
 

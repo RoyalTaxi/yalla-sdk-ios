@@ -26,6 +26,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
     private var routeData: [String: MapRoute] = [:]
     private var circleData: [String: MapCircle] = [:]
     private var userInitiatedMove = false
+    private lazy var motion = MarkerMotionDriver { [weak self] poses in self?.applyMarkerPoses(poses) }
 
     public override init() { super.init() }
 
@@ -222,6 +223,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         dispatchPrecondition(condition: .onQueue(.main))
         if closed { return }
         closed = true
+        motion.clear()
         renderedMarkers.values.forEach { $0.map = nil }
         renderedRoutes.values.forEach { $0.map = nil }
         renderedCircles.values.forEach { $0.map = nil }
@@ -274,13 +276,8 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
             let previous = markerData[id]
             if let existing = renderedMarkers[id] {
                 let moved = previous?.point != marker.point || previous?.rotation != marker.rotation
-                if moved && marker.flat {
-                    CATransaction.begin()
-                    CATransaction.setAnimationDuration(1.0)
-                    CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .linear))
-                    existing.position = CLLocationCoordinate2D(latitude: marker.point.lat, longitude: marker.point.lng)
-                    existing.rotation = shortestRotation(from: existing.rotation, to: CLLocationDegrees(marker.rotation))
-                    CATransaction.commit()
+                if marker.flat {
+                    if moved { motion.push(id: id, point: marker.point, heading: marker.rotation) }
                 } else if moved {
                     existing.position = CLLocationCoordinate2D(latitude: marker.point.lat, longitude: marker.point.lng)
                     existing.rotation = CLLocationDegrees(marker.rotation)
@@ -304,18 +301,20 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
                 if let iconValue = marker.icon { m.icon = MapIconLoader.uiImage(for: iconValue) }
                 m.map = map
                 renderedMarkers[id] = m
+                if marker.flat { motion.push(id: id, point: marker.point, heading: marker.rotation) }
             }
             markerData[id] = marker
         }
+        motion.retain(ids: Set(incoming.values.filter { $0.flat }.map { $0.id }))
+        motion.ensureRunning()
     }
 
-    private func shortestRotation(from: CLLocationDegrees, to: CLLocationDegrees) -> CLLocationDegrees {
-        let fromNorm = from.truncatingRemainder(dividingBy: 360)
-        let toNorm = to.truncatingRemainder(dividingBy: 360)
-        var delta = toNorm - fromNorm
-        if delta > 180 { delta -= 360 }
-        if delta < -180 { delta += 360 }
-        return from + delta
+    private func applyMarkerPoses(_ poses: [String: Pose]) {
+        for (id, pose) in poses {
+            guard let marker = renderedMarkers[id] else { continue }
+            marker.position = CLLocationCoordinate2D(latitude: pose.point.lat, longitude: pose.point.lng)
+            marker.rotation = CLLocationDegrees(pose.bearing)
+        }
     }
 
     private func renderRoutes(routes: [MapRoute]) {
