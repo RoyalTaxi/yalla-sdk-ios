@@ -21,7 +21,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     private var userLocationSource: MLNShapeSource?
     private var userLocationLayer: MLNCircleStyleLayer?
 
-    private var renderedAnnotations: [String: MLNAnnotation] = [:]
+    private var renderedAnnotations: [String: MLNPointAnnotation] = [:]
     private var markerImages: [String: UIImage] = [:]
     private var sharedIconKeys: [String: String] = [:]
     private var sharedIconReuseIds: Set<String> = []

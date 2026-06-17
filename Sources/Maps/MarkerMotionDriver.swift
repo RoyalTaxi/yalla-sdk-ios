@@ -14,7 +14,7 @@ final class MarkerMotionDriver {
     func push(id: String, point: GeoPoint, heading: Float) {
         let model = models[id] ?? makeModel()
         models[id] = model
-        model.push(point: point, serverHeading: KotlinFloat(float: heading), atMillis: MarkerMotionDriver.nowMillis())
+        model.push(point: point, serverHeading: heading, atMillis: MarkerMotionDriver.nowMillis())
     }
 
     func retain(ids: Set<String>) {
