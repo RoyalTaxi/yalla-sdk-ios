@@ -15,6 +15,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     private var pendingPadding = UIEdgeInsets.zero
     private var lastEmittedCenter: CLLocationCoordinate2D?
     private var warnedCirclesUnsupported = false
+    private var warnedRotationUnsupported = false
     private var interactionEnabled = true
     private var pendingUserLocation: GeoPoint?
     private var userLocationAnnotation: MLNPointAnnotation?
@@ -340,7 +341,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             if let existing = renderedAnnotations[id] {
                 if previous?.point != marker.point {
                     if marker.flat {
-                        motion.push(id: id, point: marker.point, heading: marker.rotation)
+                        motion.push(id: id, point: marker.point, routeHeading: marker.routeHeading?.floatValue, serverHeading: marker.rotation)
                     } else {
                         existing.coordinate = CLLocationCoordinate2D(latitude: marker.point.lat, longitude: marker.point.lng)
                     }
@@ -355,7 +356,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
                 ann.subtitle = marker.contentDescription
                 mv.addAnnotation(ann)
                 renderedAnnotations[id] = ann
-                if marker.flat { motion.push(id: id, point: marker.point, heading: marker.rotation) }
+                if marker.flat { motion.push(id: id, point: marker.point, routeHeading: marker.routeHeading?.floatValue, serverHeading: marker.rotation) }
             }
             markerData[id] = marker
         }
@@ -364,6 +365,10 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     }
 
     private func applyAnnotationPoses(_ poses: [String: Pose]) {
+        if !poses.isEmpty && !warnedRotationUnsupported {
+            warnedRotationUnsupported = true
+            NSLog("[YallaMaps] MapLibre-iOS MLNPointAnnotation cannot rotate; car markers glide position-only and drop Pose.bearing until the MLNSymbolStyleLayer rewrite (YLL-798 P1-3).")
+        }
         for (id, pose) in poses {
             renderedAnnotations[id]?.coordinate = CLLocationCoordinate2D(latitude: pose.point.lat, longitude: pose.point.lng)
         }

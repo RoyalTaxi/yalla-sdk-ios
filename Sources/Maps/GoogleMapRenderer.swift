@@ -277,7 +277,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
             if let existing = renderedMarkers[id] {
                 let moved = previous?.point != marker.point || previous?.rotation != marker.rotation
                 if marker.flat {
-                    if moved { motion.push(id: id, point: marker.point, heading: marker.rotation) }
+                    if moved { motion.push(id: id, point: marker.point, routeHeading: marker.routeHeading?.floatValue, serverHeading: marker.rotation) }
                 } else if moved {
                     existing.position = CLLocationCoordinate2D(latitude: marker.point.lat, longitude: marker.point.lng)
                     existing.rotation = CLLocationDegrees(marker.rotation)
@@ -301,7 +301,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
                 if let iconValue = marker.icon { m.icon = MapIconLoader.uiImage(for: iconValue) }
                 m.map = map
                 renderedMarkers[id] = m
-                if marker.flat { motion.push(id: id, point: marker.point, heading: marker.rotation) }
+                if marker.flat { motion.push(id: id, point: marker.point, routeHeading: marker.routeHeading?.floatValue, serverHeading: marker.rotation) }
             }
             markerData[id] = marker
         }

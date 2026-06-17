@@ -12,10 +12,15 @@ final class MarkerMotionDriver: NSObject {
         super.init()
     }
 
-    func push(id: String, point: GeoPoint, heading: Float) {
+    func push(id: String, point: GeoPoint, routeHeading: Float?, serverHeading: Float) {
         let model = models[id] ?? makeModel()
         models[id] = model
-        model.push(point: point, serverHeading: heading, atMillis: MarkerMotionDriver.nowMillis())
+        model.push(
+            point: point,
+            routeHint: routeHeading.map { KotlinFloat(float: $0) },
+            serverHeading: KotlinFloat(float: serverHeading),
+            atMillis: MarkerMotionDriver.nowMillis()
+        )
     }
 
     func retain(ids: Set<String>) {
@@ -52,13 +57,7 @@ final class MarkerMotionDriver: NSObject {
     }
 
     private func makeModel() -> DriverMotionModel {
-        return DriverMotionModel(
-            minMoveMeters: 1.5,
-            teleportSpeedMps: 50.0,
-            minDurationMs: 1000,
-            maxDurationMs: 12000,
-            defaultDurationMs: 10000
-        )
+        return DriverMotionModel.companion.withDefaults()
     }
 
     private static func nowMillis() -> Int64 {
