@@ -1,7 +1,7 @@
 import UIKit
 import YallaComponents
 
-final class MarkerMotionDriver {
+final class MarkerMotionDriver: NSObject {
 
     private var models: [String: DriverMotionModel] = [:]
     private var displayLink: CADisplayLink?
@@ -9,6 +9,7 @@ final class MarkerMotionDriver {
 
     init(onFrame: @escaping ([String: Pose]) -> Void) {
         self.onFrame = onFrame
+        super.init()
     }
 
     func push(id: String, point: GeoPoint, heading: Float) {
