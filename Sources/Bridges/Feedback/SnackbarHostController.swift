@@ -3,7 +3,6 @@ import UIKit
 final class SnackbarHostController: UIViewController, SnackbarItemViewDelegate {
     private let stackView = UIStackView()
     private var items: [SnackbarItemView] = []
-    private let maxVisible = 3
 
     var onEmpty: (() -> Void)?
 
@@ -29,6 +28,9 @@ final class SnackbarHostController: UIViewController, SnackbarItemViewDelegate {
     }
 
     func enqueue(_ item: SnackbarItem) {
+        let stale = items
+        items.removeAll()
+
         let itemView = SnackbarItemView(item: item)
         itemView.delegate = self
         itemView.alpha = 0
@@ -37,9 +39,7 @@ final class SnackbarHostController: UIViewController, SnackbarItemViewDelegate {
         stackView.insertArrangedSubview(itemView, at: 0)
         items.insert(itemView, at: 0)
 
-        if items.count > maxVisible, let bottom = items.popLast() {
-            removeItemView(bottom, animated: true)
-        }
+        stale.forEach { removeItemView($0, animated: true) }
 
         UIView.animate(
             withDuration: 0.25,
