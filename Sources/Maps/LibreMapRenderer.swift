@@ -115,29 +115,33 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     public func animateTo(target: GeoPoint, zoom: Float, durationMs: Int32) {
         runOnMain {
             guard let mv = self.mapView else { return }
-            let cam = MLNMapCamera(
-                lookingAtCenter: CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng),
-                altitude: mv.camera.altitude,
-                pitch: mv.camera.pitch,
-                heading: mv.camera.heading
-            )
-            mv.setZoomLevel(Double(self.clampZoom(zoom)), animated: false)
-            mv.setCamera(cam, withDuration: Double(durationMs) / 1000.0, animationTimingFunction: nil)
+            self.animateCamera(to: target, zoom: zoom, heading: mv.camera.heading, durationMs: durationMs)
         }
     }
 
     public func animateToWithBearing(target: GeoPoint, bearing: Float, zoom: Float, durationMs: Int32) {
         runOnMain {
-            guard let mv = self.mapView else { return }
-            let cam = MLNMapCamera(
-                lookingAtCenter: CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng),
-                altitude: mv.camera.altitude,
-                pitch: mv.camera.pitch,
-                heading: CLLocationDirection(bearing)
-            )
-            mv.setZoomLevel(Double(self.clampZoom(zoom)), animated: false)
-            mv.setCamera(cam, withDuration: Double(durationMs) / 1000.0, animationTimingFunction: nil)
+            self.animateCamera(to: target, zoom: zoom, heading: CLLocationDirection(bearing), durationMs: durationMs)
         }
+    }
+
+    /// Animates center + zoom + heading in ONE camera tween. The target zoom is folded into the
+    /// camera altitude rather than applied via setZoomLevel(animated:false) first — that snap would
+    /// jump to the target zoom and then animate the altitude back toward the old zoom (the visible
+    /// "comes from a fixed zoom" jump). Matches the Android Libre controller's single-camera ease.
+    private func animateCamera(to target: GeoPoint, zoom: Float, heading: CLLocationDirection, durationMs: Int32) {
+        guard let mv = mapView else { return }
+        let center = CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng)
+        let z = Double(clampZoom(zoom))
+        // Before first layout the frame is zero and altitude math is invalid; fall back to the
+        // single-call animated setCenter (still no snap).
+        guard mv.frame.size != .zero else {
+            mv.setCenter(center, zoomLevel: z, direction: heading, animated: true)
+            return
+        }
+        let altitude = MLNAltitudeForZoomLevel(z, mv.camera.pitch, center.latitude, mv.frame.size)
+        let cam = MLNMapCamera(lookingAtCenter: center, altitude: altitude, pitch: mv.camera.pitch, heading: heading)
+        mv.setCamera(cam, withDuration: Double(durationMs) / 1000.0, animationTimingFunction: nil)
     }
 
     public func fitBounds(points: [GeoPoint], leftPt: Float, topPt: Float, rightPt: Float, bottomPt: Float, animate: Bool) {
