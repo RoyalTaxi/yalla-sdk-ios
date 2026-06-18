@@ -68,18 +68,8 @@ enum MapIconLoader {
         let strokeWidth = CGFloat(dot.strokeWidthDp)
         let side = CGFloat(dot.diameterDp) + strokeWidth
         let size = CGSize(width: side, height: side)
-        let fillColor = UIColor(
-            red: CGFloat((dot.fillColorArgb >> 16) & 0xFF) / 255.0,
-            green: CGFloat((dot.fillColorArgb >> 8) & 0xFF) / 255.0,
-            blue: CGFloat(dot.fillColorArgb & 0xFF) / 255.0,
-            alpha: CGFloat((dot.fillColorArgb >> 24) & 0xFF) / 255.0
-        )
-        let strokeColor = UIColor(
-            red: CGFloat((dot.strokeColorArgb >> 16) & 0xFF) / 255.0,
-            green: CGFloat((dot.strokeColorArgb >> 8) & 0xFF) / 255.0,
-            blue: CGFloat(dot.strokeColorArgb & 0xFF) / 255.0,
-            alpha: CGFloat((dot.strokeColorArgb >> 24) & 0xFF) / 255.0
-        )
+        let fillColor = UIColor(argb: dot.fillColorArgb)
+        let strokeColor = UIColor(argb: dot.strokeColorArgb)
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { context in
             let rect = CGRect(origin: .zero, size: size).insetBy(dx: strokeWidth / 2, dy: strokeWidth / 2)
@@ -107,12 +97,7 @@ enum MapIconLoader {
         let height = label != nil ? badgeHeight * 2 + markerSize : markerSize
         let size = CGSize(width: width, height: height)
 
-        let ringColor = UIColor(
-            red: CGFloat((pin.colorArgb >> 16) & 0xFF) / 255.0,
-            green: CGFloat((pin.colorArgb >> 8) & 0xFF) / 255.0,
-            blue: CGFloat(pin.colorArgb & 0xFF) / 255.0,
-            alpha: CGFloat((pin.colorArgb >> 24) & 0xFF) / 255.0
-        )
+        let ringColor = UIColor(argb: pin.colorArgb)
 
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { context in

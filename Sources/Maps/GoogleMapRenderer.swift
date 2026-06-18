@@ -330,12 +330,12 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
             for p in route.points { path.add(CLLocationCoordinate2D(latitude: p.lat, longitude: p.lng)) }
             if let existing = renderedRoutes[id] {
                 existing.path = path
-                existing.strokeColor = uiColor(fromArgb: route.colorArgb)
+                existing.strokeColor = UIColor(argb: route.colorArgb)
                 existing.strokeWidth = CGFloat(route.widthDp)
                 existing.zIndex = Int32(route.zIndex)
             } else {
                 let line = GMSPolyline(path: path)
-                line.strokeColor = uiColor(fromArgb: route.colorArgb)
+                line.strokeColor = UIColor(argb: route.colorArgb)
                 line.strokeWidth = CGFloat(route.widthDp)
                 line.zIndex = Int32(route.zIndex)
                 line.map = map
@@ -357,14 +357,14 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
             if let existing = renderedCircles[id] {
                 existing.position = CLLocationCoordinate2D(latitude: circle.center.lat, longitude: circle.center.lng)
                 existing.radius = CLLocationDistance(circle.radiusMeters)
-                existing.fillColor = uiColor(fromArgb: circle.fillColorArgb)
-                existing.strokeColor = uiColor(fromArgb: circle.strokeColorArgb)
+                existing.fillColor = UIColor(argb: circle.fillColorArgb)
+                existing.strokeColor = UIColor(argb: circle.strokeColorArgb)
                 existing.strokeWidth = CGFloat(circle.strokeWidthDp)
                 existing.zIndex = Int32(circle.zIndex)
             } else {
                 let c = GMSCircle(position: CLLocationCoordinate2D(latitude: circle.center.lat, longitude: circle.center.lng), radius: CLLocationDistance(circle.radiusMeters))
-                c.fillColor = uiColor(fromArgb: circle.fillColorArgb)
-                c.strokeColor = uiColor(fromArgb: circle.strokeColorArgb)
+                c.fillColor = UIColor(argb: circle.fillColorArgb)
+                c.strokeColor = UIColor(argb: circle.strokeColorArgb)
                 c.strokeWidth = CGFloat(circle.strokeWidthDp)
                 c.zIndex = Int32(circle.zIndex)
                 c.map = map
@@ -399,21 +399,12 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
             circle.position = coordinate
         } else {
             let circle = GMSCircle(position: coordinate, radius: 50)
-            circle.fillColor = uiColor(fromArgb: 0x33562DF8)
-            circle.strokeColor = uiColor(fromArgb: 0x66562DF8)
+            circle.fillColor = UIColor(argb: 0x33562DF8)
+            circle.strokeColor = UIColor(argb: 0x66562DF8)
             circle.strokeWidth = 1
             circle.map = map
             userLocationCircle = circle
         }
-    }
-
-    private func uiColor(fromArgb argb: Int32) -> UIColor {
-        let value = UInt32(bitPattern: argb)
-        let a = CGFloat((value >> 24) & 0xFF) / 255.0
-        let r = CGFloat((value >> 16) & 0xFF) / 255.0
-        let g = CGFloat((value >> 8) & 0xFF) / 255.0
-        let b = CGFloat(value & 0xFF) / 255.0
-        return UIColor(red: r, green: g, blue: b, alpha: a)
     }
 
     public func mapView(_ mapView: GMSMapView, willMove gesture: Bool) {

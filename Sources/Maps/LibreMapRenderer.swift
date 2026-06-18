@@ -392,7 +392,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
                 source.shape = polyline
                 if let layer = routeLayers[id] {
                     if previous?.colorArgb != route.colorArgb {
-                        layer.lineColor = NSExpression(forConstantValue: uiColor(fromArgb: route.colorArgb))
+                        layer.lineColor = NSExpression(forConstantValue: UIColor(argb: route.colorArgb))
                     }
                     if previous?.widthDp != route.widthDp {
                         layer.lineWidth = NSExpression(forConstantValue: route.widthDp)
@@ -406,7 +406,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
                 let layer = MLNLineStyleLayer(identifier: layerId, source: source)
                 layer.lineCap = NSExpression(forConstantValue: "round")
                 layer.lineJoin = NSExpression(forConstantValue: "round")
-                layer.lineColor = NSExpression(forConstantValue: uiColor(fromArgb: route.colorArgb))
+                layer.lineColor = NSExpression(forConstantValue: UIColor(argb: route.colorArgb))
                 layer.lineWidth = NSExpression(forConstantValue: route.widthDp)
                 style.addLayer(layer)
                 routeSources[id] = source
@@ -455,8 +455,8 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             style.addSource(source)
             let layer = MLNCircleStyleLayer(identifier: "yalla-user-location-lyr", source: source)
             layer.circleRadius = radiusExpression
-            layer.circleColor = NSExpression(forConstantValue: uiColor(fromArgb: 0x33562DF8))
-            layer.circleStrokeColor = NSExpression(forConstantValue: uiColor(fromArgb: 0x66562DF8))
+            layer.circleColor = NSExpression(forConstantValue: UIColor(argb: 0x33562DF8))
+            layer.circleStrokeColor = NSExpression(forConstantValue: UIColor(argb: 0x66562DF8))
             layer.circleStrokeWidth = NSExpression(forConstantValue: 1)
             style.addLayer(layer)
             userLocationSource = source
@@ -518,15 +518,6 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         guard let sharedKey = sharedIconKeys[id], let image = markerImages[sharedKey] else { return nil }
         if let cached = mapView.dequeueReusableAnnotationImage(withIdentifier: sharedKey) { return cached }
         return MLNAnnotationImage(image: image, reuseIdentifier: sharedKey)
-    }
-
-    private func uiColor(fromArgb argb: Int32) -> UIColor {
-        let value = UInt32(bitPattern: argb)
-        let a = CGFloat((value >> 24) & 0xFF) / 255.0
-        let r = CGFloat((value >> 16) & 0xFF) / 255.0
-        let g = CGFloat((value >> 8) & 0xFF) / 255.0
-        let b = CGFloat(value & 0xFF) / 255.0
-        return UIColor(red: r, green: g, blue: b, alpha: a)
     }
 
     private func sharedIconKey(for icon: MapMarkerIcon) -> String {
