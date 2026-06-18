@@ -40,6 +40,10 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
             mv.settings.rotateGestures = false
             mv.settings.tiltGestures = false
             mv.isBuildingsEnabled = false
+            // GMSMapView hides its markers from VoiceOver by default; enabling this makes Google
+            // auto-generate accessibility elements from each marker's `title` (pickup/dropoff/driver
+            // already carry contentDescription there), so the map is navigable under VoiceOver.
+            mv.accessibilityElementsHidden = false
             mv.setMinZoom(Float(MapConstants.shared.ZOOM_MIN), maxZoom: Float(MapConstants.shared.ZOOM_MAX))
             mapView = mv
             applyInteractionEnabled()
