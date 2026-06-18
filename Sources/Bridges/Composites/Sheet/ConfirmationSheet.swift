@@ -49,7 +49,10 @@ final class ConfirmationSheet: Sheet {
         )
         let buttonVC = PrimaryButton_iosKt.PrimaryButtonViewController(
             title: actionText,
-            onClick: { [weak self] in self?.onAction() }
+            onClick: { [weak self] in
+                Haptics.impact(.medium)
+                self?.onAction()
+            }
         )
         setFooter(buttonVC.view, controller: buttonVC)
     }

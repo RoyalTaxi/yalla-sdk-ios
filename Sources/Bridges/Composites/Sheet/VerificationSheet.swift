@@ -104,11 +104,15 @@ final class VerificationSheet: Sheet {
         resendText: String,
         resendEnabled: Bool
     ) {
+        let wasError = self.isError
         self.code = code
         self.descriptionText = description
         self.isError = isError
         self.isLoading = isLoading
         guard isViewLoaded else { return }
+
+        // Fire the error haptic only on the no-error -> error edge so re-renders don't re-buzz.
+        if !wasError && isError { Haptics.error() }
 
         descriptionLabel.text = description
         pinController.setCode(code: code)
@@ -177,7 +181,10 @@ final class VerificationSheet: Sheet {
         code = newCode
         refreshConfirm()
         onCodeChangeCallback(newCode)
-        if newCode.count == codeLength { onCodeComplete(newCode) }
+        if newCode.count == codeLength {
+            Haptics.success()
+            onCodeComplete(newCode)
+        }
     }
 
     private func refreshConfirm() {

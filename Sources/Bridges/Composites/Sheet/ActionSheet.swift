@@ -45,7 +45,10 @@ final class ActionSheet: Sheet {
                 icon: item.icon,
                 trailingIcon: item.trailingIcon,
                 isDestructive: item.isDestructive,
-                onClick: { [weak self] in self?.onAction(item.id) }
+                onClick: { [weak self] in
+                    if item.isDestructive { Haptics.warning() } else { Haptics.impact(.light) }
+                    self?.onAction(item.id)
+                }
             )
             addChild(controller.viewController)
             let row = controller.viewController.view!

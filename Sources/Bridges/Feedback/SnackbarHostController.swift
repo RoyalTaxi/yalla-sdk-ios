@@ -28,6 +28,10 @@ final class SnackbarHostController: UIViewController, SnackbarItemViewDelegate {
     }
 
     func enqueue(_ item: SnackbarItem) {
+        // The host knows the semantic type (the item view only colors itself); fire the matching
+        // notification haptic here so success/error toasts feel native.
+        if item.isError { Haptics.error() } else { Haptics.success() }
+
         let stale = items
         items.removeAll()
 

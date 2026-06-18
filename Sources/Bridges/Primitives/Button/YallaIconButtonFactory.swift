@@ -48,7 +48,10 @@ public final class YallaIconButtonFactory: NSObject, IconButtonFactory {
 
         let button = UIButton(
             configuration: config,
-            primaryAction: UIAction { _ in onClick() }
+            primaryAction: UIAction { _ in
+                Haptics.impact(.light)
+                onClick()
+            }
         )
 
         let viewController = UIViewController()
@@ -100,7 +103,10 @@ private final class GlassIconButton: UIControl {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) unavailable") }
 
-    @objc private func handleTap() { onClick() }
+    @objc private func handleTap() {
+        Haptics.impact(.rigid)
+        onClick()
+    }
 
     override func layoutSubviews() {
         super.layoutSubviews()
