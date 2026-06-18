@@ -13,7 +13,7 @@ private final class ReusableSheet<T: UIViewController> {
 
     func present(on parent: UIViewController) {
         if reuseFirst { reuseFirst = false } else { viewController = make() }
-        parent.present(viewController, animated: true)
+        parent.presentSerialized(viewController, animated: true)
     }
 
     func dismiss() {
@@ -186,7 +186,7 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
             viewController: viewController,
             present: { [weak viewController] parent in
                 guard let viewController else { return }
-                parent.present(viewController, animated: true)
+                parent.presentSerialized(viewController, animated: true)
             },
             update: { [weak viewController] code, description, isError, isLoading, resendText, resendEnabled in
                 viewController?.update(
@@ -232,7 +232,7 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
             viewController: viewController,
             present: { [weak viewController] parent in
                 guard let viewController else { return }
-                parent.present(viewController, animated: true)
+                parent.presentSerialized(viewController, animated: true)
             },
             update: { [weak viewController] code, isLoading in
                 viewController?.update(code: code, isLoading: isLoading.boolValue)
@@ -275,7 +275,7 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
             viewController: viewController,
             present: { [weak viewController] parent in
                 guard let viewController else { return }
-                parent.present(viewController, animated: true)
+                parent.presentSerialized(viewController, animated: true)
             },
             update: { [weak viewController] cardNumber, cardExpiry, isError, isLoading in
                 viewController?.update(
@@ -309,11 +309,36 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
             viewController: viewController,
             present: { [weak viewController] parent in
                 guard let viewController else { return }
-                parent.present(viewController, animated: true)
+                parent.presentSerialized(viewController, animated: true)
             },
             dismiss: { [weak viewController] in
                 viewController?.dismiss(animated: true)
             }
         )
+    }
+}
+
+private extension UIViewController {
+    /// Presents `vc`, first waiting out any in-flight transition of whatever this controller is
+    /// already presenting. iOS refuses to present while the presenter is mid-transition, which is
+    /// exactly what breaks sheet-to-sheet swaps: the coordinator dismisses the old sheet and
+    /// presents the new one in the same frame, so the new present lands while the old sheet is still
+    /// animating out and is silently dropped (and on iOS 26 can throw). Chaining off the in-flight
+    /// transition's coordinator — or dismissing a settled presented controller first — serializes
+    /// them. Recurses until the presenter is free, so it also handles A→B→C in quick succession.
+    func presentSerialized(_ vc: UIViewController, animated: Bool) {
+        guard let presented = presentedViewController else {
+            present(vc, animated: animated)
+            return
+        }
+        if let coordinator = presented.transitionCoordinator {
+            coordinator.animate(alongsideTransition: nil) { [weak self] _ in
+                self?.presentSerialized(vc, animated: animated)
+            }
+        } else {
+            presented.dismiss(animated: animated) { [weak self] in
+                self?.presentSerialized(vc, animated: animated)
+            }
+        }
     }
 }
