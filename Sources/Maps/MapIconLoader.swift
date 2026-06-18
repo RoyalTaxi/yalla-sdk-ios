@@ -9,8 +9,10 @@ enum MapIconLoader {
     static let userLocationDotImage: UIImage = {
         let size = CGSize(width: 16, height: 16)
         let strokeWidth: CGFloat = 2 / UIScreen.main.scale
-        let start = UIColor(red: 0x34 / 255.0, green: 0, blue: 1, alpha: 1)
-        let end = UIColor(red: 0x88 / 255.0, green: 0x6B / 255.0, blue: 1, alpha: 1)
+        // Brand violet (0x562DF8) so the dot matches the accuracy circle drawn around it; a slightly
+        // darker stop gives subtle depth. Shared by both the Google and MapLibre renderers.
+        let start = UIColor(red: 0x56 / 255.0, green: 0x2D / 255.0, blue: 0xF8 / 255.0, alpha: 1)
+        let end = UIColor(red: 0x3D / 255.0, green: 0x1F / 255.0, blue: 0xB0 / 255.0, alpha: 1)
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { context in
             let ctx = context.cgContext

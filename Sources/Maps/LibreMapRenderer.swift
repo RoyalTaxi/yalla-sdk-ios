@@ -46,6 +46,11 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             mv.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             mv.automaticallyAdjustsContentInset = false
             mv.compassView.isHidden = true
+            // Hide the on-map attribution "i" button and the MapLibre logo. NOTE: OSM/MapLibre's
+            // license requires the "© OpenStreetMap contributors" notice to stay visible somewhere —
+            // it's surfaced in Settings > Legal, so hiding the on-map ornaments is compliant.
+            mv.showsAttributionButton = false
+            mv.showsLogoView = false
             mv.isRotateEnabled = false
             mv.isPitchEnabled = false
             mv.minimumZoomLevel = MapConstants.shared.ZOOM_MIN
@@ -451,8 +456,12 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         } else {
             let annotation = MLNPointAnnotation()
             annotation.coordinate = coordinate
-            mv.addAnnotation(annotation)
+            // Assign BEFORE addAnnotation: addAnnotation fires the imageFor: delegate synchronously,
+            // and that delegate returns the brand dot only when the annotation matches
+            // `=== userLocationAnnotation`. Assigning after lets the first add fail that identity
+            // check, so MapLibre draws its default red pin.
             userLocationAnnotation = annotation
+            mv.addAnnotation(annotation)
         }
         guard let style = style else { return }
         let feature = MLNPointFeature()
