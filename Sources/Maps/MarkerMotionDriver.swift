@@ -7,6 +7,12 @@ final class MarkerMotionDriver: NSObject {
     private var displayLink: CADisplayLink?
     private let onFrame: ([String: Pose]) -> Void
 
+    // Last pose emitted per id. A parked car samples the same pose every frame; skipping those
+    // keeps the renderers from re-placing static map markers 30x/second (battery/jank on the
+    // long "waiting for driver" wait). The display link keeps ticking (cheap sample) until a
+    // settled-signal lands on DriverMotionModel; the expensive marker writes are what we cut.
+    private var lastEmitted: [String: Pose] = [:]
+
     init(onFrame: @escaping ([String: Pose]) -> Void) {
         self.onFrame = onFrame
         super.init()
@@ -25,7 +31,10 @@ final class MarkerMotionDriver: NSObject {
 
     func retain(ids: Set<String>) {
         let stale = Set(models.keys).subtracting(ids)
-        for id in stale { models.removeValue(forKey: id) }
+        for id in stale {
+            models.removeValue(forKey: id)
+            lastEmitted.removeValue(forKey: id)
+        }
         if models.isEmpty { stop() }
     }
 
@@ -39,6 +48,7 @@ final class MarkerMotionDriver: NSObject {
 
     func clear() {
         models.removeAll()
+        lastEmitted.removeAll()
         stop()
     }
 
@@ -52,8 +62,22 @@ final class MarkerMotionDriver: NSObject {
         let now = MarkerMotionDriver.nowMillis()
         var poses: [String: Pose] = [:]
         poses.reserveCapacity(models.count)
-        for (id, model) in models { poses[id] = model.sample(atMillis: now) }
-        onFrame(poses)
+        for (id, model) in models {
+            let pose = model.sample(atMillis: now)
+            // Emit only when the pose actually moved past the renderers' write epsilon.
+            if let last = lastEmitted[id], MarkerMotionDriver.posesClose(last, pose) { continue }
+            lastEmitted[id] = pose
+            poses[id] = pose
+        }
+        if !poses.isEmpty { onFrame(poses) }
+    }
+
+    /// Positions within ~1e-6° (~0.1m) and bearings within 0.1° are visually identical — treat
+    /// them as unchanged so a settled car doesn't trigger a marker rewrite every frame.
+    private static func posesClose(_ a: Pose, _ b: Pose) -> Bool {
+        abs(a.point.lat - b.point.lat) < 1e-6 &&
+            abs(a.point.lng - b.point.lng) < 1e-6 &&
+            abs(Double(a.bearing) - Double(b.bearing)) < 0.1
     }
 
     private func makeModel() -> DriverMotionModel {

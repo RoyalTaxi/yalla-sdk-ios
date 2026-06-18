@@ -84,7 +84,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
                 bearing: current?.bearing ?? 0,
                 viewingAngle: current?.viewingAngle ?? 0
             )
-            self.mapView?.animate(to: cam)
+            self.animateCamera(to: cam, durationMs: durationMs)
         }
     }
 
@@ -97,8 +97,19 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
                 bearing: CLLocationDirection(bearing),
                 viewingAngle: Double(mv.camera.viewingAngle)
             )
-            mv.animate(to: cam)
+            self.animateCamera(to: cam, durationMs: durationMs)
         }
+    }
+
+    /// Google's `animate(to:)` uses an engine-default duration; wrap it in a CATransaction so the
+    /// caller's durationMs is honored (matching the MapLibre renderer) for consistent pacing.
+    private func animateCamera(to cam: GMSCameraPosition, durationMs: Int32) {
+        guard let mv = mapView else { return }
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(Double(durationMs) / 1000.0)
+        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
+        mv.animate(to: cam)
+        CATransaction.commit()
     }
 
     public func fitBounds(points: [GeoPoint], leftPt: Float, topPt: Float, rightPt: Float, bottomPt: Float, animate: Bool) {
@@ -321,6 +332,16 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         }
     }
 
+    /// Two point lists are equal when same-length and every coordinate matches within ~1e-7°.
+    /// Compares scalars directly to avoid allocating K/N wrapper objects per element.
+    private static func pointsEqual(_ a: [GeoPoint]?, _ b: [GeoPoint]) -> Bool {
+        guard let a = a, a.count == b.count else { return false }
+        for i in 0..<a.count {
+            if abs(a[i].lat - b[i].lat) > 1e-7 || abs(a[i].lng - b[i].lng) > 1e-7 { return false }
+        }
+        return true
+    }
+
     private func renderRoutes(routes: [MapRoute]) {
         guard let map = mapView else { return }
         let incoming = Dictionary(uniqueKeysWithValues: routes.map { ($0.id, $0) })
@@ -330,14 +351,21 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
             routeData.removeValue(forKey: id)
         }
         for (id, route) in incoming {
-            let path = GMSMutablePath()
-            for p in route.points { path.add(CLLocationCoordinate2D(latitude: p.lat, longitude: p.lng)) }
+            let previous = routeData[id]
             if let existing = renderedRoutes[id] {
-                existing.path = path
-                existing.strokeColor = UIColor(argb: route.colorArgb)
-                existing.strokeWidth = CGFloat(route.widthDp)
-                existing.zIndex = Int32(route.zIndex)
+                // Skip rebuilding the path when the active-trip route is re-sent unchanged each poll;
+                // only re-set color/width/zIndex when they actually differ.
+                if !Self.pointsEqual(previous?.points, route.points) {
+                    let path = GMSMutablePath()
+                    for p in route.points { path.add(CLLocationCoordinate2D(latitude: p.lat, longitude: p.lng)) }
+                    existing.path = path
+                }
+                if previous?.colorArgb != route.colorArgb { existing.strokeColor = UIColor(argb: route.colorArgb) }
+                if previous?.widthDp != route.widthDp { existing.strokeWidth = CGFloat(route.widthDp) }
+                if previous?.zIndex != route.zIndex { existing.zIndex = Int32(route.zIndex) }
             } else {
+                let path = GMSMutablePath()
+                for p in route.points { path.add(CLLocationCoordinate2D(latitude: p.lat, longitude: p.lng)) }
                 let line = GMSPolyline(path: path)
                 line.strokeColor = UIColor(argb: route.colorArgb)
                 line.strokeWidth = CGFloat(route.widthDp)

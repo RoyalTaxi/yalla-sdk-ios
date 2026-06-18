@@ -374,6 +374,16 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         }
     }
 
+    /// Two point lists are equal when same-length and every coordinate matches within ~1e-7°.
+    /// Compares scalars directly to avoid allocating K/N wrapper objects per element.
+    private static func pointsEqual(_ a: [GeoPoint]?, _ b: [GeoPoint]) -> Bool {
+        guard let a = a, a.count == b.count else { return false }
+        for i in 0..<a.count {
+            if abs(a[i].lat - b[i].lat) > 1e-7 || abs(a[i].lng - b[i].lng) > 1e-7 { return false }
+        }
+        return true
+    }
+
     private func renderRoutes(routes: [MapRoute]) {
         guard let style = style else { return }
         let incoming = Dictionary(uniqueKeysWithValues: routes.map { ($0.id, $0) })
@@ -386,10 +396,14 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         }
         for (id, route) in incoming {
             let previous = routeData[id]
-            var coords = route.points.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng) }
-            let polyline = MLNPolylineFeature(coordinates: &coords, count: UInt(coords.count))
+            let pointsChanged = !Self.pointsEqual(previous?.points, route.points)
             if let source = routeSources[id] {
-                source.shape = polyline
+                // The active-trip route is re-sent on every location/order poll with identical
+                // geometry; only rebuild + re-upload the feature when the points actually changed.
+                if pointsChanged {
+                    var coords = route.points.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng) }
+                    source.shape = MLNPolylineFeature(coordinates: &coords, count: UInt(coords.count))
+                }
                 if let layer = routeLayers[id] {
                     if previous?.colorArgb != route.colorArgb {
                         layer.lineColor = NSExpression(forConstantValue: UIColor(argb: route.colorArgb))
@@ -399,6 +413,8 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
                     }
                 }
             } else {
+                var coords = route.points.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng) }
+                let polyline = MLNPolylineFeature(coordinates: &coords, count: UInt(coords.count))
                 let sourceId = "yalla-route-src-\(id)"
                 let layerId = "yalla-route-lyr-\(id)"
                 let source = MLNShapeSource(identifier: sourceId, shape: polyline, options: nil)
