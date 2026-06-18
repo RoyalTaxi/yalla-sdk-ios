@@ -320,24 +320,33 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
 
 private extension UIViewController {
     /// Presents `vc`, first waiting out any in-flight transition of whatever this controller is
-    /// already presenting. iOS refuses to present while the presenter is mid-transition, which is
-    /// exactly what breaks sheet-to-sheet swaps: the coordinator dismisses the old sheet and
-    /// presents the new one in the same frame, so the new present lands while the old sheet is still
-    /// animating out and is silently dropped (and on iOS 26 can throw). Chaining off the in-flight
-    /// transition's coordinator — or dismissing a settled presented controller first — serializes
-    /// them. Recurses until the presenter is free, so it also handles A→B→C in quick succession.
-    func presentSerialized(_ vc: UIViewController, animated: Bool) {
+    /// already presenting. iOS refuses to present while the presenter is mid-transition — exactly
+    /// what breaks sheet-to-sheet swaps: the coordinator dismisses the outgoing sheet and presents
+    /// the incoming one in the same frame, so the new present lands while the old sheet is still
+    /// animating out and is silently dropped (and on iOS 26 can throw).
+    ///
+    /// It never force-dismisses the current occupant: the outgoing sheet's own lifecycle dismisses
+    /// it, so we only WAIT for the presenter to free up — chaining off the in-flight transition's
+    /// coordinator, or polling a frame when something settled still occupies it. That avoids tearing
+    /// down an unrelated modal (alert / share / Safari) that happens to be up. The attempt cap stops
+    /// it spinning if the presenter never frees (e.g. a modal that's staying put).
+    func presentSerialized(_ vc: UIViewController, animated: Bool, attempt: Int = 0) {
+        if vc.presentingViewController != nil { return } // already presented — don't double-present
         guard let presented = presentedViewController else {
             present(vc, animated: animated)
             return
         }
+        guard attempt < 60 else { return } // give up rather than fight an unexpected modal
         if let coordinator = presented.transitionCoordinator {
+            // A transition (the outgoing sheet's dismiss) is in flight — present once it completes.
             coordinator.animate(alongsideTransition: nil) { [weak self] _ in
-                self?.presentSerialized(vc, animated: animated)
+                self?.presentSerialized(vc, animated: animated, attempt: attempt + 1)
             }
         } else {
-            presented.dismiss(animated: animated) { [weak self] in
-                self?.presentSerialized(vc, animated: animated)
+            // Something settled still occupies the presenter — in a swap this is the outgoing sheet
+            // a frame before its own dismiss runs. Wait a hop and retry; never dismiss it ourselves.
+            DispatchQueue.main.async { [weak self] in
+                self?.presentSerialized(vc, animated: animated, attempt: attempt + 1)
             }
         }
     }
