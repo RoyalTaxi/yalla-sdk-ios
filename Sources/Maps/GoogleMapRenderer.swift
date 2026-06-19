@@ -101,15 +101,11 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         }
     }
 
-    /// Google's `animate(to:)` uses an engine-default duration; wrap it in a CATransaction so the
-    /// caller's durationMs is honored (matching the MapLibre renderer) for consistent pacing.
+    /// GMS `animate(to:)` already interrupts any in-flight animation cleanly. Wrapping it in a
+    /// CATransaction (to honor durationMs) made a NEW animation cancel BOTH the old and the new — the
+    /// synchronous commit truncated the new tween. Call it directly; GMS uses its default pacing.
     private func animateCamera(to cam: GMSCameraPosition, durationMs: Int32) {
-        guard let mv = mapView else { return }
-        CATransaction.begin()
-        CATransaction.setAnimationDuration(Double(durationMs) / 1000.0)
-        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
-        mv.animate(to: cam)
-        CATransaction.commit()
+        mapView?.animate(to: cam)
     }
 
     public func fitBounds(points: [GeoPoint], leftPt: Float, topPt: Float, rightPt: Float, bottomPt: Float, animate: Bool) {

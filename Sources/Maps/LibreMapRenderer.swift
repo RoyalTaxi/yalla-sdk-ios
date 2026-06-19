@@ -125,23 +125,16 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         }
     }
 
-    /// Animates center + zoom + heading in ONE camera tween. The target zoom is folded into the
-    /// camera altitude rather than applied via setZoomLevel(animated:false) first — that snap would
-    /// jump to the target zoom and then animate the altitude back toward the old zoom (the visible
-    /// "comes from a fixed zoom" jump). Matches the Android Libre controller's single-camera ease.
+    /// Animates center + zoom + heading in ONE tween, in ZOOM-space. We deliberately do NOT build an
+    /// MLNMapCamera from an altitude: MapLibre interprets a camera's altitude against the
+    /// inset-reduced viewport (the bottom sheet sets a large bottom contentInset), so an altitude
+    /// computed from the full frame lands at a higher zoom than requested — the residual jump on
+    /// order-create/follow. setCenter(_:zoomLevel:) is inset-independent and matches moveTo/fitBounds,
+    /// so all Libre camera moves share one zoom-space model. (durationMs uses MapLibre's default ease.)
     private func animateCamera(to target: GeoPoint, zoom: Float, heading: CLLocationDirection, durationMs: Int32) {
         guard let mv = mapView else { return }
         let center = CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng)
-        let z = Double(clampZoom(zoom))
-        // Before first layout the frame is zero and altitude math is invalid; fall back to the
-        // single-call animated setCenter (still no snap).
-        guard mv.frame.size != .zero else {
-            mv.setCenter(center, zoomLevel: z, direction: heading, animated: true)
-            return
-        }
-        let altitude = MLNAltitudeForZoomLevel(z, mv.camera.pitch, center.latitude, mv.frame.size)
-        let cam = MLNMapCamera(lookingAtCenter: center, altitude: altitude, pitch: mv.camera.pitch, heading: heading)
-        mv.setCamera(cam, withDuration: Double(durationMs) / 1000.0, animationTimingFunction: nil)
+        mv.setCenter(center, zoomLevel: Double(clampZoom(zoom)), direction: heading, animated: true)
     }
 
     public func fitBounds(points: [GeoPoint], leftPt: Float, topPt: Float, rightPt: Float, bottomPt: Float, animate: Bool) {
@@ -433,7 +426,15 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
                 layer.lineJoin = NSExpression(forConstantValue: "round")
                 layer.lineColor = NSExpression(forConstantValue: UIColor(argb: route.colorArgb))
                 layer.lineWidth = NSExpression(forConstantValue: route.widthDp)
-                style.addLayer(layer)
+                // Insert the route BELOW the basemap's first symbol layer. Plain addLayer appends to
+                // the TOP of the style stack — above MapLibre's image-annotation markers (cars/pins
+                // render inside the GL layer stack via the imageFor: path), which painted the route
+                // over them. Inserting below the first symbol keeps the route under markers + labels.
+                if let firstSymbol = style.layers.first(where: { $0 is MLNSymbolStyleLayer }) {
+                    style.insertLayer(layer, below: firstSymbol)
+                } else {
+                    style.addLayer(layer)
+                }
                 routeSources[id] = source
                 routeLayers[id] = layer
             }
