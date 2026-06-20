@@ -135,8 +135,25 @@ enum MapIconLoader {
         if let pin = icon as? MapMarkerIcon.Pin { return "pin-\(pin.colorArgb)-\(pin.label ?? "")" }
         if let dot = icon as? MapMarkerIcon.Dot { return "dot-\(dot.fillColorArgb)-\(dot.strokeColorArgb)-\(dot.diameterDp)-\(dot.strokeWidthDp)" }
         if let bytes = icon as? MapMarkerIcon.Bytes {
-            return "bytes-\(bytes.data.hashValue)"
+            return "bytes-\(bytesDigest(bytes.data))"
         }
         return "unknown"
+    }
+
+    /// Stable content digest for a `Bytes` icon's payload: `<length>-<FNV-1a hash of the bytes>`.
+    ///
+    /// `KotlinByteArray.hashValue` is identity/address-derived, NOT a content hash — it is unstable
+    /// across runs (the same PNG churns the cache after a relaunch) AND collidable, so two different
+    /// PNGs could share a key and serve the wrong cached bitmap. Hashing length + content makes the key
+    /// deterministic per payload and collision-resistant. `internal` so the no-collision property can
+    /// be pinned by tests.
+    static func bytesDigest(_ array: KotlinByteArray) -> String {
+        let count = Int(array.size)
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325 // FNV-1a 64-bit offset basis
+        for i in 0..<count {
+            hash ^= UInt64(UInt8(bitPattern: array.get(index: Int32(i))))
+            hash = hash &* 0x0000_0100_0000_01B3 // FNV-1a 64-bit prime
+        }
+        return "\(count)-\(String(hash, radix: 16))"
     }
 }

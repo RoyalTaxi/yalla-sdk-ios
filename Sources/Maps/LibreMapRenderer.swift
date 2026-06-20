@@ -112,6 +112,10 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         }
     }
 
+    /// `durationMs` is intentionally NOT honored on iOS: MapLibre's `setCenter(_:animated:)` uses its
+    /// own default ease and exposes no duration knob on this inset-independent path (see
+    /// `animateCamera`). iOS camera animations use native pacing; Android honors `durationMs`. Kept in
+    /// the signature for cross-platform contract parity — do not assume identical timing across platforms.
     public func animateTo(target: GeoPoint, zoom: Float, durationMs: Int32) {
         runOnMain {
             guard let mv = self.mapView else { return }
@@ -119,6 +123,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         }
     }
 
+    /// `durationMs` is intentionally NOT honored on iOS — see `animateTo`. MapLibre's default ease is used.
     public func animateToWithBearing(target: GeoPoint, bearing: Float, zoom: Float, durationMs: Int32) {
         runOnMain {
             self.animateCamera(to: target, zoom: zoom, heading: CLLocationDirection(bearing), durationMs: durationMs)
@@ -132,13 +137,14 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     /// order-create/follow. setCenter(_:zoomLevel:) is inset-independent and matches moveTo/fitBounds,
     /// so all Libre camera moves share one zoom-space model. (durationMs uses MapLibre's default ease.)
     private func animateCamera(to target: GeoPoint, zoom: Float, heading: CLLocationDirection, durationMs: Int32) {
+        _ = durationMs
         guard let mv = mapView else { return }
         let center = CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng)
         mv.setCenter(center, zoomLevel: Double(clampZoom(zoom)), direction: heading, animated: true)
     }
 
     public func fitBounds(points: [GeoPoint], leftPt: Float, topPt: Float, rightPt: Float, bottomPt: Float, animate: Bool) {
-        let valid = points.filter { $0.lat != 0 || $0.lng != 0 }
+        let valid = points.filter { $0.hasFix }
         guard !valid.isEmpty else { return }
         if valid.count == 1 {
             let single = valid[0]
@@ -215,8 +221,13 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         }
     }
 
+    /// No-op on the MapLibre backend by design: MapLibre styling is driven by a style URL (see
+    /// `setStyleUrl`), and applying raw JSON via `MLNStyle.styleJSON` after load is rare in practice
+    /// and would require re-running the full marker/route/user-location teardown that `setStyleUrl`
+    /// does. A `MapStyle.InlineJson` is therefore silently ignored here while the Google backend honors
+    /// it — a deliberate per-backend capability gap. Callers needing MapLibre styling should pass
+    /// `MapStyle.Url`.
     public func setStyleJson(json: String) {
-        // MapLibre iOS accepts JSON via MLNStyle.styleJSON — but routing is rare in practice; ignore.
     }
 
     public func setColorScheme(isDark: Bool) {
@@ -485,8 +496,8 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             style.addSource(source)
             let layer = MLNCircleStyleLayer(identifier: "yalla-user-location-lyr", source: source)
             layer.circleRadius = radiusExpression
-            layer.circleColor = NSExpression(forConstantValue: UIColor(argb: 0x33562DF8))
-            layer.circleStrokeColor = NSExpression(forConstantValue: UIColor(argb: 0x66562DF8))
+            layer.circleColor = NSExpression(forConstantValue: UIColor(argb: 0x33562DF8 as Int32))
+            layer.circleStrokeColor = NSExpression(forConstantValue: UIColor(argb: 0x66562DF8 as Int32))
             layer.circleStrokeWidth = NSExpression(forConstantValue: 1)
             style.addLayer(layer)
             userLocationSource = source
@@ -556,7 +567,9 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             return "yalla-icon-pin-\(pin.colorArgb)-\(pin.label ?? "")"
         }
         if let bytes = icon as? MapMarkerIcon.Bytes {
-            return "yalla-icon-bytes-\(bytes.data.hashValue)"
+            // Content digest, not bytes.data.hashValue: the latter is identity-derived (unstable +
+            // collidable) and would serve the wrong cached bitmap. See MapIconLoader.bytesDigest.
+            return "yalla-icon-bytes-\(MapIconLoader.bytesDigest(bytes.data))"
         }
         if let dot = icon as? MapMarkerIcon.Dot {
             return "yalla-icon-dot-\(dot.fillColorArgb)-\(dot.strokeColorArgb)-\(dot.diameterDp)-\(dot.strokeWidthDp)"
@@ -564,7 +577,8 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         return "yalla-icon-unknown"
     }
 
-    private func centerEpsilonEqual(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Bool {
-        return abs(a.latitude - b.latitude) < 1e-6 && abs(a.longitude - b.longitude) < 1e-6
+    func centerEpsilonEqual(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Bool {
+        return abs(a.latitude - b.latitude) < MapEpsilon.positionDegrees &&
+            abs(a.longitude - b.longitude) < MapEpsilon.positionDegrees
     }
 }

@@ -75,6 +75,10 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         }
     }
 
+    /// `durationMs` is intentionally NOT honored on iOS: GMS `animate(to:)` uses its own pacing, and
+    /// wrapping it in a CATransaction to force the duration truncated the tween (see `animateCamera`).
+    /// iOS camera animations use the native engine's pacing; Android honors `durationMs`. Kept in the
+    /// signature for cross-platform contract parity — do not assume identical timing across platforms.
     public func animateTo(target: GeoPoint, zoom: Float, durationMs: Int32) {
         runOnMain {
             let current = self.mapView?.camera
@@ -88,6 +92,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         }
     }
 
+    /// `durationMs` is intentionally NOT honored on iOS — see `animateTo`. Native GMS pacing is used.
     public func animateToWithBearing(target: GeoPoint, bearing: Float, zoom: Float, durationMs: Int32) {
         runOnMain {
             guard let mv = self.mapView else { return }
@@ -104,12 +109,14 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
     /// GMS `animate(to:)` already interrupts any in-flight animation cleanly. Wrapping it in a
     /// CATransaction (to honor durationMs) made a NEW animation cancel BOTH the old and the new — the
     /// synchronous commit truncated the new tween. Call it directly; GMS uses its default pacing.
+    /// `durationMs` is therefore deliberately unused here (see the public `animateTo` KDoc).
     private func animateCamera(to cam: GMSCameraPosition, durationMs: Int32) {
+        _ = durationMs
         mapView?.animate(to: cam)
     }
 
     public func fitBounds(points: [GeoPoint], leftPt: Float, topPt: Float, rightPt: Float, bottomPt: Float, animate: Bool) {
-        let valid = points.filter { $0.lat != 0 || $0.lng != 0 }
+        let valid = points.filter { $0.hasFix }
         guard !valid.isEmpty else { return }
         if valid.count == 1 {
             let single = valid[0]
@@ -168,6 +175,11 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         runOnMain { self.mapView?.animate(toZoom: self.clampZoom(zoom)) }
     }
 
+    /// No-op on the Google backend by design: Google Maps styling is driven by its native scheme
+    /// (`overrideUserInterfaceStyle`, see `setColorScheme`) and `GMSMapStyle` JSON (see `setStyleJson`),
+    /// not by a style URL. A `MapStyle.Url` is therefore silently ignored here while the MapLibre
+    /// backend honors it — a deliberate per-backend capability gap. Callers needing custom Google
+    /// styling should pass `MapStyle.InlineJson`.
     public func setStyleUrl(url: String) {
     }
 
@@ -427,8 +439,8 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
             circle.position = coordinate
         } else {
             let circle = GMSCircle(position: coordinate, radius: 50)
-            circle.fillColor = UIColor(argb: 0x33562DF8)
-            circle.strokeColor = UIColor(argb: 0x66562DF8)
+            circle.fillColor = UIColor(argb: 0x33562DF8 as Int32)
+            circle.strokeColor = UIColor(argb: 0x66562DF8 as Int32)
             circle.strokeWidth = 1
             circle.map = map
             userLocationCircle = circle
@@ -480,11 +492,11 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         userInitiatedMove = false
     }
 
-    private func cameraEpsilonEqual(_ a: GMSCameraPosition, _ b: GMSCameraPosition) -> Bool {
-        return abs(a.target.latitude - b.target.latitude) < 1e-6 &&
-            abs(a.target.longitude - b.target.longitude) < 1e-6 &&
-            abs(a.zoom - b.zoom) < 1e-3 &&
-            abs(a.bearing - b.bearing) < 0.1 &&
-            abs(a.viewingAngle - b.viewingAngle) < 0.1
+    func cameraEpsilonEqual(_ a: GMSCameraPosition, _ b: GMSCameraPosition) -> Bool {
+        return abs(a.target.latitude - b.target.latitude) < MapEpsilon.positionDegrees &&
+            abs(a.target.longitude - b.target.longitude) < MapEpsilon.positionDegrees &&
+            abs(a.zoom - b.zoom) < MapEpsilon.zoom &&
+            abs(a.bearing - b.bearing) < MapEpsilon.angleDegrees &&
+            abs(a.viewingAngle - b.viewingAngle) < MapEpsilon.angleDegrees
     }
 }
