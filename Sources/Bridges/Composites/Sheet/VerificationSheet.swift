@@ -13,6 +13,7 @@ final class VerificationSheet: Sheet {
     private var descriptionText: String
     private let descriptionLabel = UILabel()
     private let dismissEnabledFlag: Bool
+    private let alphanumeric: Bool
 
     private var code: String
     private var isError: Bool
@@ -29,6 +30,7 @@ final class VerificationSheet: Sheet {
         error: isError,
         autoFocus: true,
         horizontalPadding: 16,
+        alphanumeric: alphanumeric,
         onValueChange: { [weak self] newCode in self?.handleCodeChange(newCode) }
     )
     private lazy var resendController = GhostButtonController(
@@ -55,6 +57,7 @@ final class VerificationSheet: Sheet {
         isLoading: Bool,
         resendEnabled: Bool,
         dismissEnabled: Bool,
+        alphanumeric: Bool,
         onCodeChange: @escaping (String) -> Void,
         onConfirm: @escaping () -> Void,
         onResend: @escaping () -> Void,
@@ -72,6 +75,7 @@ final class VerificationSheet: Sheet {
         self.isError = isError
         self.isLoading = isLoading
         self.dismissEnabledFlag = dismissEnabled
+        self.alphanumeric = alphanumeric
         self.onCodeChangeCallback = onCodeChange
         self.onConfirm = onConfirm
         self.onResend = onResend

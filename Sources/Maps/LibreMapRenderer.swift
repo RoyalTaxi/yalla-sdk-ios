@@ -271,7 +271,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         dispatchPrecondition(condition: .onQueue(.main))
         if !circles.isEmpty && !warnedCirclesUnsupported {
             warnedCirclesUnsupported = true
-            NSLog("[YallaMaps] MapLibre does not support geographic circles; setCircles is a no-op. MapCapabilities.LIBRE.supportsCircles = false.")
+            NSLog("[YallaMaps] MapLibre does not support geographic circles; setCircles is a no-op.")
         }
     }
 

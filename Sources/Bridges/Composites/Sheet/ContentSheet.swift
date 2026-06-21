@@ -6,6 +6,7 @@ final class ContentSheet: Sheet {
     private let titleText: String?
     private let showClose: Bool
     private let contentController: UIViewController
+    private let onClose: (() -> Void)?
     private var composeContentHeight: CGFloat = 0
     private var hasHeader: Bool { titleText != nil || showClose }
 
@@ -15,11 +16,13 @@ final class ContentSheet: Sheet {
         title: String?,
         showClose: Bool,
         contentController: UIViewController,
+        onClose: (() -> Void)?,
         onDismissRequest: @escaping () -> Void
     ) {
         self.titleText = title
         self.showClose = showClose
         self.contentController = contentController
+        self.onClose = onClose
         super.init(dismissEnabled: true, sheetSwipeEnabled: sheetSwipeEnabled, sizesToContent: !fullHeight, onDismissRequest: onDismissRequest)
     }
 
@@ -31,6 +34,16 @@ final class ContentSheet: Sheet {
             controller: contentController,
             insets: UIEdgeInsets(top: hasHeader ? Sheet.headerHeight : 0, left: 0, bottom: 0, right: 0)
         )
+    }
+
+    /// The header close button exists only when the caller supplied `onClose` (the Kotlin side sets
+    /// `showClose = onClose != null`). Mirror Android, where the close button's tap is wired
+    /// directly to `onClose` and nothing else: the caller's action owns the dismissal (it flips
+    /// `isVisible`, which drives `handle.dismiss()` and the single `onDismissRequest` on teardown).
+    /// Firing the base `onDismissRequest` + dismiss here would both double-fire the dismiss callback
+    /// and force a close the caller may not have wanted.
+    override func handleCloseTap() {
+        onClose?()
     }
 
     override func preferredContentHeight() -> CGFloat? {
@@ -278,9 +291,20 @@ final class NotificationDetailSheet: Sheet {
     }
 
     private func loadImage(from urlString: String) {
-        guard let url = URL(string: urlString) else { return }
-        loadingTask = URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
-            guard let self, let data, let image = UIImage(data: data) else { return }
+        guard let url = URL(string: urlString) else {
+            collapseImageSlot()
+            return
+        }
+        loadingTask = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            guard let self else { return }
+            let httpOK = (response as? HTTPURLResponse).map { (200..<300).contains($0.statusCode) } ?? true
+            guard error == nil, httpOK, let data, let image = UIImage(data: data) else {
+                // 404 / network error / non-image bytes: keep the image slot collapsed (height 0 AND
+                // no post-image spacing) so the layout matches the no-image case rather than leaving
+                // a gap waiting for an image that never arrives.
+                DispatchQueue.main.async { self.collapseImageSlot() }
+                return
+            }
             DispatchQueue.main.async {
                 self.imageView.image = image
                 let aspect = image.size.height / max(image.size.width, 1)
@@ -293,6 +317,18 @@ final class NotificationDetailSheet: Sheet {
             }
         }
         loadingTask?.resume()
+    }
+
+    /// Removes the image's reserved space when there is (or will be) no image: zero height and zero
+    /// the spacing after it, mirroring the empty-url branch in `buildContent`.
+    private func collapseImageSlot() {
+        guard isViewLoaded else { return }
+        imageHeightConstraint.constant = 0
+        contentStack.setCustomSpacing(0, after: imageView)
+        view.setNeedsLayout()
+        if #available(iOS 16.0, *), let sheet = sheetPresentationController {
+            sheet.animateChanges { sheet.invalidateDetents() }
+        }
     }
 
     deinit {

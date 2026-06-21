@@ -65,6 +65,22 @@ let package = Package(
                 .product(name: "MapLibre", package: "maplibre-gl-native-distribution")
             ],
             path: "Sources/Maps"
+        ),
+        .testTarget(
+            name: "MapsTests",
+            dependencies: [
+                "Maps",
+                "YallaComponents"
+            ],
+            path: "Tests/MapsTests"
+        ),
+        .testTarget(
+            name: "BridgesTests",
+            dependencies: [
+                "Bridges",
+                "YallaComponents"
+            ],
+            path: "Tests/BridgesTests"
         )
     ]
 )

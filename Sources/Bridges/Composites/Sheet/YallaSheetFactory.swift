@@ -1,29 +1,50 @@
 import UIKit
 import YallaComponents
 
+/// Holds a single sheet wrapper for the whole lifetime of the Compose controller it wraps and
+/// re-presents that same instance on every show.
+///
+/// The wrapper is built once and never recreated. The factory sheets wrap a long-lived
+/// `ComposeUIViewController` created once on the Kotlin side (it lives for the whole composable
+/// lifetime) and add it as a child VC in `viewDidLoad`. Recreating the wrapper on re-present would
+/// `addChild` that already-parented controller without first detaching it from the previous wrapper
+/// — undefined UIKit that renders a blank / asserting sheet on the common dismiss-then-re-show path.
+/// Reusing the one wrapper also keeps `viewController` stable, so a handle that captured it (and the
+/// Kotlin `onFullyExpanded` poll that reads `handle.viewController.isBeingPresented()`) always sees
+/// the live, currently-presented controller rather than a discarded snapshot.
 private final class ReusableSheet<T: UIViewController> {
-    private let make: () -> T
-    private var reuseFirst = true
-    private(set) var viewController: T
+    let viewController: T
 
-    init(_ make: @escaping () -> T) {
-        self.make = make
+    init(_ make: () -> T) {
         self.viewController = make()
     }
 
     func present(on parent: UIViewController) {
-        if reuseFirst { reuseFirst = false } else { viewController = make() }
-        parent.presentSerialized(viewController, animated: true)
+        onMain { parent.presentSerialized(self.viewController, animated: true) }
     }
 
     func dismiss() {
-        viewController.dismiss(animated: true)
+        onMain { self.viewController.dismiss(animated: true) }
     }
 }
 
+/// The iOS native implementation of the Kotlin `SheetFactory` Compose↔native bridge protocol.
+///
+/// Each `create*` method builds a native sheet view controller and returns an imperative
+/// `*Handle` of closures (`present`/`dismiss`/`update*`) the Kotlin side drives. The handle's
+/// `viewController` is the live, reused sheet — stable across re-presents. All handle closures are
+/// marshalled to the main thread, so the bridge is safe regardless of the caller's queue.
 public final class YallaSheetFactory: NSObject, SheetFactory {
+    /// Creates the factory. Instantiated by the Kotlin bridge as the `SheetFactory` conformance.
     public override init() { super.init() }
 
+    /// A bare sheet that hosts `contentController` edge-to-edge (no header/footer chrome), sizing to
+    /// the Compose content's reported height.
+    /// - Parameters:
+    ///   - fullHeight: present at the large detent instead of sizing to content.
+    ///   - sheetSwipeEnabled: allow interactive swipe-to-dismiss.
+    ///   - contentController: the Compose-hosting controller to embed; reused across re-presents.
+    ///   - onDismissRequest: fired when the sheet is dismissed (swipe or programmatic close).
     public func createShell(
         fullHeight: Bool,
         sheetSwipeEnabled: Bool,
@@ -42,16 +63,27 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
             viewController: reusable.viewController,
             present: { reusable.present(on: $0) },
             dismiss: { reusable.dismiss() },
-            updateContentHeight: { reusable.viewController.updateComposeContentHeight(CGFloat(truncating: $0)) }
+            updateContentHeight: { height in onMain { reusable.viewController.updateComposeContentHeight(CGFloat(truncating: height)) } }
         )
     }
 
+    /// A sheet that hosts `contentController` under an optional title/close-button header.
+    /// - Parameters:
+    ///   - fullHeight: present at the large detent instead of sizing to content.
+    ///   - sheetSwipeEnabled: allow interactive swipe-to-dismiss.
+    ///   - title: optional header title; `nil` hides the title.
+    ///   - showClose: show a close button in the header.
+    ///   - contentController: the Compose-hosting controller to embed; reused across re-presents.
+    ///   - onClose: the caller's explicit close action, fired when the header close button is tapped
+    ///     (distinct from `onDismissRequest`, which fires on any dismissal). `nil` if unset.
+    ///   - onDismissRequest: fired when the sheet is dismissed (swipe, backdrop, or close button).
     public func createContent(
         fullHeight: Bool,
         sheetSwipeEnabled: Bool,
         title: String?,
         showClose: Bool,
         contentController: UIViewController,
+        onClose: (() -> Void)?,
         onDismissRequest: @escaping () -> Void
     ) -> ContentSheetHandle {
         let reusable = ReusableSheet {
@@ -61,6 +93,7 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
                 title: title,
                 showClose: showClose,
                 contentController: contentController,
+                onClose: onClose,
                 onDismissRequest: onDismissRequest
             )
         }
@@ -68,10 +101,19 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
             viewController: reusable.viewController,
             present: { reusable.present(on: $0) },
             dismiss: { reusable.dismiss() },
-            updateContentHeight: { reusable.viewController.updateComposeContentHeight(CGFloat(truncating: $0)) }
+            updateContentHeight: { height in onMain { reusable.viewController.updateComposeContentHeight(CGFloat(truncating: height)) } }
         )
     }
 
+    /// A confirmation sheet: an illustration, header/title/description text, and a single action button.
+    /// - Parameters:
+    ///   - imageResource: an asset-catalog image name in the SDK resource bundle (not a URL).
+    ///   - isDark: render with the dark-mode illustration/colors regardless of system appearance.
+    ///   - header: optional small header above the title.
+    ///   - actionText: label for the primary action button.
+    ///   - dismissEnabled: allow swipe/backdrop dismissal.
+    ///   - onAction: fired when the action button is tapped.
+    ///   - onDismissRequest: fired when the sheet is dismissed without invoking the action.
     public func createConfirmation(
         imageResource: String,
         isDark: Bool,
@@ -93,6 +135,12 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         )
     }
 
+    /// A single-select list sheet.
+    /// - Parameters:
+    ///   - items: the selectable rows.
+    ///   - selectedId: the id of the initially-selected row, if any.
+    ///   - onSelect: fired with the selected row's id when the user picks a row.
+    ///   - onDismissRequest: fired when the sheet is dismissed without a selection.
     public func createSelection(
         title: String,
         items: [SelectableItemModel],
@@ -110,6 +158,11 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         )
     }
 
+    /// An action-list sheet (a menu of tappable rows that each fire and dismiss).
+    /// - Parameters:
+    ///   - items: the action rows.
+    ///   - onAction: fired with the tapped row's id.
+    ///   - onDismissRequest: fired when the sheet is dismissed without tapping an action.
     public func createAction(
         title: String,
         items: [ActionableItemModel],
@@ -126,6 +179,14 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         )
     }
 
+    /// A date-picker sheet.
+    /// - Parameters:
+    ///   - startDate: the initially-selected date.
+    ///   - minDate: optional earliest selectable date.
+    ///   - maxDate: optional latest selectable date.
+    ///   - dismissEnabled: allow swipe/backdrop dismissal.
+    ///   - onSelect: fired with the chosen date when the user confirms.
+    ///   - onDismissRequest: fired when the sheet is dismissed without confirming.
     public func createDatePicker(
         startDate: Date,
         minDate: Date?,
@@ -145,6 +206,21 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         )
     }
 
+    /// An OTP/verification-code sheet with a fixed-length code field and resend affordance.
+    /// - Parameters:
+    ///   - code: the initial code value.
+    ///   - codeLength: number of digits the code field expects.
+    ///   - isError: render the field in its error state (e.g. a rejected code).
+    ///   - isLoading: show the confirm button's loading state.
+    ///   - resendEnabled: enable the resend action.
+    ///   - dismissEnabled: allow swipe/backdrop dismissal.
+    ///   - alphanumeric: accept letters as well as digits and show an ASCII keyboard instead of the
+    ///     numeric keypad (mirrors the shared `PinField`'s `alphanumeric` flag).
+    ///   - onCodeChange: fired on every code edit.
+    ///   - onConfirm: fired when the confirm button is tapped.
+    ///   - onResend: fired when resend is tapped.
+    ///   - onCodeComplete: fired once the full `codeLength` is entered.
+    ///   - onDismissRequest: fired when the sheet is dismissed.
     public func createVerification(
         code: String,
         codeLength: Int32,
@@ -157,6 +233,7 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         isLoading: Bool,
         resendEnabled: Bool,
         dismissEnabled: Bool,
+        alphanumeric: Bool,
         onCodeChange: @escaping (String) -> Void,
         onConfirm: @escaping () -> Void,
         onResend: @escaping () -> Void,
@@ -175,6 +252,7 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
             isLoading: isLoading,
             resendEnabled: resendEnabled,
             dismissEnabled: dismissEnabled,
+            alphanumeric: alphanumeric,
             onCodeChange: onCodeChange,
             onConfirm: onConfirm,
             onResend: onResend,
@@ -185,25 +263,38 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         return VerificationSheetHandle(
             viewController: viewController,
             present: { [weak viewController] parent in
-                guard let viewController else { return }
-                parent.presentSerialized(viewController, animated: true)
+                onMain {
+                    guard let viewController else { return }
+                    parent.presentSerialized(viewController, animated: true)
+                }
             },
             update: { [weak viewController] code, description, isError, isLoading, resendText, resendEnabled in
-                viewController?.update(
-                    code: code,
-                    description: description,
-                    isError: isError.boolValue,
-                    isLoading: isLoading.boolValue,
-                    resendText: resendText,
-                    resendEnabled: resendEnabled.boolValue
-                )
+                onMain {
+                    viewController?.update(
+                        code: code,
+                        description: description,
+                        isError: isError.boolValue,
+                        isLoading: isLoading.boolValue,
+                        resendText: resendText,
+                        resendEnabled: resendEnabled.boolValue
+                    )
+                }
             },
             dismiss: { [weak viewController] in
-                viewController?.dismiss(animated: true)
+                onMain { viewController?.dismiss(animated: true) }
             }
         )
     }
 
+    /// A promo-code entry sheet with a single text field and submit button.
+    /// - Parameters:
+    ///   - code: the initial field value.
+    ///   - placeholder: the field's placeholder text.
+    ///   - hint: helper text shown under the field.
+    ///   - isLoading: show the submit button's loading state.
+    ///   - onCodeChange: fired on every edit.
+    ///   - onSubmit: fired when submit is tapped.
+    ///   - onDismissRequest: fired when the sheet is dismissed.
     public func createPromoCode(
         code: String,
         title: String,
@@ -231,18 +322,30 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         return PromoCodeSheetHandle(
             viewController: viewController,
             present: { [weak viewController] parent in
-                guard let viewController else { return }
-                parent.presentSerialized(viewController, animated: true)
+                onMain {
+                    guard let viewController else { return }
+                    parent.presentSerialized(viewController, animated: true)
+                }
             },
             update: { [weak viewController] code, isLoading in
-                viewController?.update(code: code, isLoading: isLoading.boolValue)
+                onMain { viewController?.update(code: code, isLoading: isLoading.boolValue) }
             },
             dismiss: { [weak viewController] in
-                viewController?.dismiss(animated: true)
+                onMain { viewController?.dismiss(animated: true) }
             }
         )
     }
 
+    /// An add-payment-card sheet with masked card-number and expiry fields.
+    /// - Parameters:
+    ///   - cardNumber: the initial (unmasked) card-number value.
+    ///   - cardExpiry: the initial expiry value (MMYY).
+    ///   - isError: render both fields in their error state.
+    ///   - isLoading: show the submit button's loading state.
+    ///   - onCardNumberChange: fired on every card-number edit.
+    ///   - onExpiryChange: fired on every expiry edit.
+    ///   - onSubmit: fired when submit is tapped.
+    ///   - onDismissRequest: fired when the sheet is dismissed.
     public func createAddCard(
         cardNumber: String,
         cardExpiry: String,
@@ -274,23 +377,31 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         return AddCardSheetHandle(
             viewController: viewController,
             present: { [weak viewController] parent in
-                guard let viewController else { return }
-                parent.presentSerialized(viewController, animated: true)
+                onMain {
+                    guard let viewController else { return }
+                    parent.presentSerialized(viewController, animated: true)
+                }
             },
             update: { [weak viewController] cardNumber, cardExpiry, isError, isLoading in
-                viewController?.update(
-                    cardNumber: cardNumber,
-                    cardExpiry: cardExpiry,
-                    isError: isError.boolValue,
-                    isLoading: isLoading.boolValue
-                )
+                onMain {
+                    viewController?.update(
+                        cardNumber: cardNumber,
+                        cardExpiry: cardExpiry,
+                        isError: isError.boolValue,
+                        isLoading: isLoading.boolValue
+                    )
+                }
             },
             dismiss: { [weak viewController] in
-                viewController?.dismiss(animated: true)
+                onMain { viewController?.dismiss(animated: true) }
             }
         )
     }
 
+    /// A notification-detail sheet showing a title, date, body, and an optional remote image.
+    /// - Parameters:
+    ///   - imageUrl: an optional remote image URL; the image slot collapses if absent or the load fails.
+    ///   - onDismissRequest: fired when the sheet is dismissed.
     public func createNotificationDetail(
         title: String,
         date: String,
@@ -308,46 +419,14 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         return NotificationDetailSheetHandle(
             viewController: viewController,
             present: { [weak viewController] parent in
-                guard let viewController else { return }
-                parent.presentSerialized(viewController, animated: true)
+                onMain {
+                    guard let viewController else { return }
+                    parent.presentSerialized(viewController, animated: true)
+                }
             },
             dismiss: { [weak viewController] in
-                viewController?.dismiss(animated: true)
+                onMain { viewController?.dismiss(animated: true) }
             }
         )
-    }
-}
-
-private extension UIViewController {
-    /// Presents `vc`, first waiting out any in-flight transition of whatever this controller is
-    /// already presenting. iOS refuses to present while the presenter is mid-transition — exactly
-    /// what breaks sheet-to-sheet swaps: the coordinator dismisses the outgoing sheet and presents
-    /// the incoming one in the same frame, so the new present lands while the old sheet is still
-    /// animating out and is silently dropped (and on iOS 26 can throw).
-    ///
-    /// It never force-dismisses the current occupant: the outgoing sheet's own lifecycle dismisses
-    /// it, so we only WAIT for the presenter to free up — chaining off the in-flight transition's
-    /// coordinator, or polling a frame when something settled still occupies it. That avoids tearing
-    /// down an unrelated modal (alert / share / Safari) that happens to be up. The attempt cap stops
-    /// it spinning if the presenter never frees (e.g. a modal that's staying put).
-    func presentSerialized(_ vc: UIViewController, animated: Bool, attempt: Int = 0) {
-        if vc.presentingViewController != nil { return } // already presented — don't double-present
-        guard let presented = presentedViewController else {
-            present(vc, animated: animated)
-            return
-        }
-        guard attempt < 60 else { return } // give up rather than fight an unexpected modal
-        if let coordinator = presented.transitionCoordinator {
-            // A transition (the outgoing sheet's dismiss) is in flight — present once it completes.
-            coordinator.animate(alongsideTransition: nil) { [weak self] _ in
-                self?.presentSerialized(vc, animated: animated, attempt: attempt + 1)
-            }
-        } else {
-            // Something settled still occupies the presenter — in a swap this is the outgoing sheet
-            // a frame before its own dismiss runs. Wait a hop and retry; never dismiss it ourselves.
-            DispatchQueue.main.async { [weak self] in
-                self?.presentSerialized(vc, animated: animated, attempt: attempt + 1)
-            }
-        }
     }
 }
