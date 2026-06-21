@@ -16,6 +16,15 @@ final class ConfirmationSheet: Sheet {
 
     private let contentVerticalInset: CGFloat = 32
     private let detentBottomSlack: CGFloat = 16
+    private lazy var actionController = PrimaryButtonController(
+        text: actionText,
+        enabled: true,
+        loading: false,
+        onClick: { [weak self] in
+            Haptics.impact(.medium)
+            self?.onAction()
+        }
+    )
 
     init(
         imageResource: String,
@@ -47,14 +56,7 @@ final class ConfirmationSheet: Sheet {
             insets: UIEdgeInsets(top: 16, left: 36, bottom: 16, right: 36),
             centerVertically: true
         )
-        let buttonVC = PrimaryButton_iosKt.PrimaryButtonViewController(
-            title: actionText,
-            onClick: { [weak self] in
-                Haptics.impact(.medium)
-                self?.onAction()
-            }
-        )
-        setFooter(buttonVC.view, controller: buttonVC)
+        setFooter(actionController.viewController.view, controller: actionController.viewController)
     }
 
     override func preferredContentHeight() -> CGFloat? {

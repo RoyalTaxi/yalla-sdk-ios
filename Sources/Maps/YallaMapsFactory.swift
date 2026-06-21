@@ -7,7 +7,7 @@ public final class YallaMapsFactory: NSObject, IosMapRendererFactory {
     private let libreStyleURL: String
 
     public init(libreStyleURL: String? = nil) {
-        self.libreStyleURL = libreStyleURL ?? MapConstants.shared.LIGHT_STYLE_URL
+        self.libreStyleURL = libreStyleURL ?? MapStyle.companion.CARTO.lightUrl
         super.init()
         Self.provideGoogleApiKeyOnce()
     }

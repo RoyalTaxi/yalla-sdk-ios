@@ -101,7 +101,12 @@ class Sheet: UIViewController {
 
     func makeIconButton(icon: String, _ onTap: @escaping () -> Void) -> IconButtonHandle {
         YallaIconButtonFactory().create(
-            icon: icon, shape: .circle, iconArgb: 0, containerArgb: 0, borderArgb: 0, onClick: onTap
+            icon: icon,
+            shape: .circle,
+            iconArgb: Int64.min,
+            containerArgb: Int64.min,
+            borderArgb: Int64.min,
+            onClick: onTap
         )
     }
 
