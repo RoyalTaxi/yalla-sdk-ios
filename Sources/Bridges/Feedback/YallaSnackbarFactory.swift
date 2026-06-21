@@ -1,6 +1,10 @@
 import UIKit
 import YallaComponents
 
+/// The iOS native implementation of the Kotlin `SnackbarFactory` Compose↔native bridge protocol.
+///
+/// Snackbars are hosted in a dedicated passthrough window above the app's content so they float over
+/// any presented sheet; the window is created on demand and torn down once the last toast clears.
 public final class YallaSnackbarFactory: NSObject, SnackbarFactory {
     private var window: UIWindow?
     private lazy var host: SnackbarHostController = {
@@ -9,25 +13,29 @@ public final class YallaSnackbarFactory: NSObject, SnackbarFactory {
         return controller
     }()
 
+    /// Creates the factory. Instantiated by the Kotlin bridge as the `SnackbarFactory` conformance.
     public override init() { super.init() }
 
+    /// Shows a transient toast. `isError` selects the error styling and the matching haptic.
+    /// Safe to call from any thread.
     public func show(message: String, isError: Bool) {
-        DispatchQueue.main.async { [weak self] in
+        onMain { [weak self] in
             guard let self else { return }
             self.ensureWindow()
             self.host.enqueue(SnackbarItem(message: message, isError: isError))
         }
     }
 
+    /// Dismisses all visible toasts. Safe to call from any thread.
     public func dismiss() {
-        DispatchQueue.main.async { [weak self] in
+        onMain { [weak self] in
             self?.host.dismissAll()
         }
     }
 
     private func ensureWindow() {
         if window != nil { return }
-        guard let scene = activeWindowScene() else { return }
+        guard let scene = UIApplication.activeBridgeWindowScene() else { return }
         let newWindow = PassthroughWindow(windowScene: scene)
         newWindow.windowLevel = .alert + 1
         newWindow.backgroundColor = .clear
@@ -41,21 +49,5 @@ public final class YallaSnackbarFactory: NSObject, SnackbarFactory {
         w.windowScene = nil
         w.isHidden = true
         self.window = nil
-    }
-
-    private func activeWindowScene() -> UIWindowScene? {
-        let priorityFor: (UIScene.ActivationState) -> Int = { state in
-            switch state {
-            case .foregroundActive: return 0
-            case .foregroundInactive: return 1
-            case .background: return 2
-            case .unattached: return 3
-            @unknown default: return 4
-            }
-        }
-        return UIApplication.shared.connectedScenes
-            .sorted { priorityFor($0.activationState) < priorityFor($1.activationState) }
-            .compactMap { $0 as? UIWindowScene }
-            .first
     }
 }

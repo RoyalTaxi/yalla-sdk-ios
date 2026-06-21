@@ -62,6 +62,7 @@ final class SelectionSheet: Sheet {
     }
 
     private func handleSelect(_ id: String) {
+        Haptics.selection()
         selectedId = id
         for row in rows { row.controller.setSelected(selected: row.id == id) }
         onSelect(id)

@@ -7,7 +7,7 @@ public final class YallaMapsFactory: NSObject, IosMapRendererFactory {
     private let libreStyleURL: String
 
     public init(libreStyleURL: String? = nil) {
-        self.libreStyleURL = libreStyleURL ?? MapConstants.shared.LIGHT_STYLE_URL
+        self.libreStyleURL = libreStyleURL ?? MapStyle.companion.CARTO.lightUrl
         super.init()
         Self.provideGoogleApiKeyOnce()
     }
@@ -34,6 +34,10 @@ public final class YallaMapsFactory: NSObject, IosMapRendererFactory {
         let key = Bundle.main.object(forInfoDictionaryKey: "GOOGLE_MAPS_API_KEY") as? String
         if let key, !key.isEmpty {
             GMSServices.provideAPIKey(key)
+        } else {
+            // A misconfigured buyer otherwise gets a blank Google map with no signal. Surface the
+            // missing key so it's diagnosable. The key itself is never logged (none is present here).
+            NSLog("[YallaMaps] GOOGLE_MAPS_API_KEY missing or empty in Info.plist; the Google backend will render blank. Set it via the GOOGLE_MAPS_API_KEY xcconfig.")
         }
     }
 }
