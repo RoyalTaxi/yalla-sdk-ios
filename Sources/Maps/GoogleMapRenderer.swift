@@ -40,9 +40,6 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
             mv.settings.rotateGestures = false
             mv.settings.tiltGestures = false
             mv.isBuildingsEnabled = false
-            // GMSMapView hides its markers from VoiceOver by default; enabling this makes Google
-            // auto-generate accessibility elements from each marker's `title` (pickup/dropoff/driver
-            // already carry contentDescription there), so the map is navigable under VoiceOver.
             mv.accessibilityElementsHidden = false
             mv.setMinZoom(Float(MapConstants.shared.ZOOM_MIN), maxZoom: Float(MapConstants.shared.ZOOM_MAX))
             mapView = mv
@@ -75,10 +72,6 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         }
     }
 
-    /// `durationMs` is intentionally NOT honored on iOS: GMS `animate(to:)` uses its own pacing, and
-    /// wrapping it in a CATransaction to force the duration truncated the tween (see `animateCamera`).
-    /// iOS camera animations use the native engine's pacing; Android honors `durationMs`. Kept in the
-    /// signature for cross-platform contract parity — do not assume identical timing across platforms.
     public func animateTo(target: GeoPoint, zoom: Float, durationMs: Int32) {
         runOnMain {
             let current = self.mapView?.camera
@@ -92,7 +85,6 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         }
     }
 
-    /// `durationMs` is intentionally NOT honored on iOS — see `animateTo`. Native GMS pacing is used.
     public func animateToWithBearing(target: GeoPoint, bearing: Float, zoom: Float, durationMs: Int32) {
         runOnMain {
             guard let mv = self.mapView else { return }
@@ -106,10 +98,6 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         }
     }
 
-    /// GMS `animate(to:)` already interrupts any in-flight animation cleanly. Wrapping it in a
-    /// CATransaction (to honor durationMs) made a NEW animation cancel BOTH the old and the new — the
-    /// synchronous commit truncated the new tween. Call it directly; GMS uses its default pacing.
-    /// `durationMs` is therefore deliberately unused here (see the public `animateTo` KDoc).
     private func animateCamera(to cam: GMSCameraPosition, durationMs: Int32) {
         _ = durationMs
         mapView?.animate(to: cam)
@@ -175,11 +163,6 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         runOnMain { self.mapView?.animate(toZoom: self.clampZoom(zoom)) }
     }
 
-    /// No-op on the Google backend by design: Google Maps styling is driven by its native scheme
-    /// (`overrideUserInterfaceStyle`, see `setColorScheme`) and `GMSMapStyle` JSON (see `setStyleJson`),
-    /// not by a style URL. A `MapStyle.Url` is therefore silently ignored here while the MapLibre
-    /// backend honors it — a deliberate per-backend capability gap. Callers needing custom Google
-    /// styling should pass `MapStyle.InlineJson`.
     public func setStyleUrl(url: String) {
     }
 
@@ -340,8 +323,6 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         }
     }
 
-    /// Two point lists are equal when same-length and every coordinate matches within ~1e-7°.
-    /// Compares scalars directly to avoid allocating K/N wrapper objects per element.
     private static func pointsEqual(_ a: [GeoPoint]?, _ b: [GeoPoint]) -> Bool {
         guard let a = a, a.count == b.count else { return false }
         for i in 0..<a.count {
@@ -361,8 +342,6 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         for (id, route) in incoming {
             let previous = routeData[id]
             if let existing = renderedRoutes[id] {
-                // Skip rebuilding the path when the active-trip route is re-sent unchanged each poll;
-                // only re-set color/width/zIndex when they actually differ.
                 if !Self.pointsEqual(previous?.points, route.points) {
                     let path = GMSMutablePath()
                     for p in route.points { path.add(CLLocationCoordinate2D(latitude: p.lat, longitude: p.lng)) }

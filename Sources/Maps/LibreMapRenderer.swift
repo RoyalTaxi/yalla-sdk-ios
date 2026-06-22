@@ -46,9 +46,6 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             mv.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             mv.automaticallyAdjustsContentInset = false
             mv.compassView.isHidden = true
-            // Hide the on-map attribution "i" button and the MapLibre logo. NOTE: OSM/MapLibre's
-            // license requires the "© OpenStreetMap contributors" notice to stay visible somewhere —
-            // it's surfaced in Settings > Legal, so hiding the on-map ornaments is compliant.
             mv.showsAttributionButton = false
             mv.showsLogoView = false
             mv.isRotateEnabled = false
@@ -112,10 +109,6 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         }
     }
 
-    /// `durationMs` is intentionally NOT honored on iOS: MapLibre's `setCenter(_:animated:)` uses its
-    /// own default ease and exposes no duration knob on this inset-independent path (see
-    /// `animateCamera`). iOS camera animations use native pacing; Android honors `durationMs`. Kept in
-    /// the signature for cross-platform contract parity — do not assume identical timing across platforms.
     public func animateTo(target: GeoPoint, zoom: Float, durationMs: Int32) {
         runOnMain {
             guard let mv = self.mapView else { return }
@@ -123,19 +116,12 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         }
     }
 
-    /// `durationMs` is intentionally NOT honored on iOS — see `animateTo`. MapLibre's default ease is used.
     public func animateToWithBearing(target: GeoPoint, bearing: Float, zoom: Float, durationMs: Int32) {
         runOnMain {
             self.animateCamera(to: target, zoom: zoom, heading: CLLocationDirection(bearing), durationMs: durationMs)
         }
     }
 
-    /// Animates center + zoom + heading in ONE tween, in ZOOM-space. We deliberately do NOT build an
-    /// MLNMapCamera from an altitude: MapLibre interprets a camera's altitude against the
-    /// inset-reduced viewport (the bottom sheet sets a large bottom contentInset), so an altitude
-    /// computed from the full frame lands at a higher zoom than requested — the residual jump on
-    /// order-create/follow. setCenter(_:zoomLevel:) is inset-independent and matches moveTo/fitBounds,
-    /// so all Libre camera moves share one zoom-space model. (durationMs uses MapLibre's default ease.)
     private func animateCamera(to target: GeoPoint, zoom: Float, heading: CLLocationDirection, durationMs: Int32) {
         _ = durationMs
         guard let mv = mapView else { return }
@@ -221,12 +207,6 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         }
     }
 
-    /// No-op on the MapLibre backend by design: MapLibre styling is driven by a style URL (see
-    /// `setStyleUrl`), and applying raw JSON via `MLNStyle.styleJSON` after load is rare in practice
-    /// and would require re-running the full marker/route/user-location teardown that `setStyleUrl`
-    /// does. A `MapStyle.InlineJson` is therefore silently ignored here while the Google backend honors
-    /// it — a deliberate per-backend capability gap. Callers needing MapLibre styling should pass
-    /// `MapStyle.Url`.
     public func setStyleJson(json: String) {
     }
 
@@ -387,8 +367,6 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         }
     }
 
-    /// Two point lists are equal when same-length and every coordinate matches within ~1e-7°.
-    /// Compares scalars directly to avoid allocating K/N wrapper objects per element.
     private static func pointsEqual(_ a: [GeoPoint]?, _ b: [GeoPoint]) -> Bool {
         guard let a = a, a.count == b.count else { return false }
         for i in 0..<a.count {
@@ -411,8 +389,6 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             let previous = routeData[id]
             let pointsChanged = !Self.pointsEqual(previous?.points, route.points)
             if let source = routeSources[id] {
-                // The active-trip route is re-sent on every location/order poll with identical
-                // geometry; only rebuild + re-upload the feature when the points actually changed.
                 if pointsChanged {
                     var coords = route.points.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng) }
                     source.shape = MLNPolylineFeature(coordinates: &coords, count: UInt(coords.count))
@@ -437,10 +413,6 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
                 layer.lineJoin = NSExpression(forConstantValue: "round")
                 layer.lineColor = NSExpression(forConstantValue: UIColor(argb: route.colorArgb))
                 layer.lineWidth = NSExpression(forConstantValue: route.widthDp)
-                // Insert the route BELOW the basemap's first symbol layer. Plain addLayer appends to
-                // the TOP of the style stack — above MapLibre's image-annotation markers (cars/pins
-                // render inside the GL layer stack via the imageFor: path), which painted the route
-                // over them. Inserting below the first symbol keeps the route under markers + labels.
                 if let firstSymbol = style.layers.first(where: { $0 is MLNSymbolStyleLayer }) {
                     style.insertLayer(layer, below: firstSymbol)
                 } else {
@@ -472,10 +444,6 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         } else {
             let annotation = MLNPointAnnotation()
             annotation.coordinate = coordinate
-            // Assign BEFORE addAnnotation: addAnnotation fires the imageFor: delegate synchronously,
-            // and that delegate returns the brand dot only when the annotation matches
-            // `=== userLocationAnnotation`. Assigning after lets the first add fail that identity
-            // check, so MapLibre draws its default red pin.
             userLocationAnnotation = annotation
             mv.addAnnotation(annotation)
         }
@@ -567,8 +535,6 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             return "yalla-icon-pin-\(pin.colorArgb)-\(pin.label ?? "")"
         }
         if let bytes = icon as? MapMarkerIcon.Bytes {
-            // Content digest, not bytes.data.hashValue: the latter is identity-derived (unstable +
-            // collidable) and would serve the wrong cached bitmap. See MapIconLoader.bytesDigest.
             return "yalla-icon-bytes-\(MapIconLoader.bytesDigest(bytes.data))"
         }
         if let dot = icon as? MapMarkerIcon.Dot {

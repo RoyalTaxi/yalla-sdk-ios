@@ -7,16 +7,8 @@ final class MarkerMotionDriver: NSObject {
     private var displayLink: CADisplayLink?
     private let onFrame: ([String: Pose]) -> Void
 
-    // Last pose emitted per id. A parked car samples the same pose every frame; skipping those
-    // keeps the renderers from re-placing static map markers 30x/second (battery/jank on the
-    // long "waiting for driver" wait). The display link keeps ticking (cheap sample) until a
-    // settled-signal lands on DriverMotionModel; the expensive marker writes are what we cut.
     private var lastEmitted: [String: Pose] = [:]
 
-    // Set by clear() and reset by push(): with no model and no fresh push since the last clear, an
-    // ensureRunning() (e.g. a stray render after close()) must not resurrect the 30fps link. A real
-    // push() — the legitimate reuse path, including the Libre style-reload that clear()s then re-adds
-    // markers — re-arms the driver.
     private var cleared = false
 
     init(onFrame: @escaping ([String: Pose]) -> Void) {
@@ -24,9 +16,6 @@ final class MarkerMotionDriver: NSObject {
         super.init()
     }
 
-    // Safety net behind close()→clear(). Because the link targets a weak proxy (below) rather than
-    // self, ARC can reclaim the driver as soon as its renderer drops it even if close() was missed;
-    // deinit then invalidates the still-live link so a zombie 30fps tick can't outlive the driver.
     deinit {
         stop()
     }
@@ -54,10 +43,6 @@ final class MarkerMotionDriver: NSObject {
 
     func ensureRunning() {
         guard !cleared, displayLink == nil, !models.isEmpty else { return }
-        // Target a weak proxy, NOT self: CADisplayLink retains its target, so targeting self would
-        // keep the driver (and its renderer, via onFrame) alive until invalidate() runs — a leak +
-        // a zombie 30fps tick if close() is ever missed. The proxy holds the driver weakly, so ARC
-        // reclaims the driver when its renderer drops it; deinit then invalidates the link.
         let link = CADisplayLink(target: WeakDisplayLinkProxy(self), selector: #selector(WeakDisplayLinkProxy.onTick(_:)))
         link.preferredFramesPerSecond = 30
         link.add(to: .main, forMode: .common)
@@ -83,7 +68,6 @@ final class MarkerMotionDriver: NSObject {
         poses.reserveCapacity(models.count)
         for (id, model) in models {
             let pose = model.sample(atMillis: now)
-            // Emit only when the pose actually moved past the renderers' write epsilon.
             if let last = lastEmitted[id], MarkerMotionDriver.posesClose(last, pose) { continue }
             lastEmitted[id] = pose
             poses[id] = pose
@@ -91,14 +75,9 @@ final class MarkerMotionDriver: NSObject {
         if !poses.isEmpty { onFrame(poses) }
     }
 
-    /// Two positions closer than this (~0.1m) are visually identical on the map.
     static let positionEpsilonDegrees = 1e-6
-    /// Two bearings closer than this (degrees) are visually identical.
     static let bearingEpsilonDegrees = 0.1
 
-    /// Positions within ~1e-6° (~0.1m) and bearings within 0.1° are visually identical — treat
-    /// them as unchanged so a settled car doesn't trigger a marker rewrite every frame.
-    /// `internal` (not `private`) so the per-frame emit-dedup boundary can be pinned by tests.
     static func posesClose(_ a: Pose, _ b: Pose) -> Bool {
         abs(a.point.lat - b.point.lat) < positionEpsilonDegrees &&
             abs(a.point.lng - b.point.lng) < positionEpsilonDegrees &&
@@ -114,11 +93,6 @@ final class MarkerMotionDriver: NSObject {
     }
 }
 
-/// Forwards CADisplayLink ticks to the driver WITHOUT retaining it. CADisplayLink retains its target;
-/// targeting the driver directly creates a link <-> driver cycle broken only by invalidate(). By
-/// targeting this proxy (which holds the driver weakly) the link never keeps the driver alive, so ARC
-/// reclaims the driver when its renderer drops it — even if close() is missed — and MarkerMotionDriver's
-/// deinit then invalidates the orphaned link.
 private final class WeakDisplayLinkProxy: NSObject {
     private weak var driver: MarkerMotionDriver?
 
@@ -129,8 +103,6 @@ private final class WeakDisplayLinkProxy: NSObject {
 
     @objc func onTick(_ link: CADisplayLink) {
         guard let driver = driver else {
-            // Driver was deallocated without invalidating the link (e.g. close() missed). Stop here so
-            // the orphaned proxy+link don't keep firing forever on the main runloop.
             link.invalidate()
             return
         }

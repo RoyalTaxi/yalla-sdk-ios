@@ -9,8 +9,6 @@ enum MapIconLoader {
     static let userLocationDotImage: UIImage = {
         let size = CGSize(width: 16, height: 16)
         let strokeWidth: CGFloat = 2 / UIScreen.main.scale
-        // Brand violet (0x562DF8) so the dot matches the accuracy circle drawn around it; a slightly
-        // darker stop gives subtle depth. Shared by both the Google and MapLibre renderers.
         let start = UIColor(red: 0x56 / 255.0, green: 0x2D / 255.0, blue: 0xF8 / 255.0, alpha: 1)
         let end = UIColor(red: 0x3D / 255.0, green: 0x1F / 255.0, blue: 0xB0 / 255.0, alpha: 1)
         let renderer = UIGraphicsImageRenderer(size: size)
@@ -140,19 +138,12 @@ enum MapIconLoader {
         return "unknown"
     }
 
-    /// Stable content digest for a `Bytes` icon's payload: `<length>-<FNV-1a hash of the bytes>`.
-    ///
-    /// `KotlinByteArray.hashValue` is identity/address-derived, NOT a content hash — it is unstable
-    /// across runs (the same PNG churns the cache after a relaunch) AND collidable, so two different
-    /// PNGs could share a key and serve the wrong cached bitmap. Hashing length + content makes the key
-    /// deterministic per payload and collision-resistant. `internal` so the no-collision property can
-    /// be pinned by tests.
     static func bytesDigest(_ array: KotlinByteArray) -> String {
         let count = Int(array.size)
-        var hash: UInt64 = 0xcbf2_9ce4_8422_2325 // FNV-1a 64-bit offset basis
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
         for i in 0..<count {
             hash ^= UInt64(UInt8(bitPattern: array.get(index: Int32(i))))
-            hash = hash &* 0x0000_0100_0000_01B3 // FNV-1a 64-bit prime
+            hash = hash &* 0x0000_0100_0000_01B3
         }
         return "\(count)-\(String(hash, radix: 16))"
     }

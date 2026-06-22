@@ -1,16 +1,10 @@
-# SwiftLint configuration for the public Yalla iOS SDK Swift bridge surface.
-#
-# Public bridge declarations require DocC, matching the Kotlin API documentation gate. The
-# length/complexity rules keep UIKit bridge files reviewable without constraining internal helpers.
 
 included:
   - Sources/Bridges
 
-# Opt-in rules we want enforced.
 opt_in_rules:
   - missing_docs
 
-# Require DocC on every open/public declaration; nothing lower so internal helpers stay quiet.
 missing_docs:
   error: [open, public]
 
@@ -36,8 +30,6 @@ cyclomatic_complexity:
   error: 20
 
 function_parameter_count:
-  # Sheet factory create* methods legitimately carry many params (one per Compose protocol arg);
-  # the composable/init carve-out applies, so this is a generous ceiling, not a tight gate.
   warning: 18
   error: 22
 
@@ -46,7 +38,7 @@ identifier_name:
     warning: 2
     error: 1
   excluded:
-    - a  # ARGB channel locals (a/r/g/b) in the color decode
+    - a
     - r
     - g
     - b

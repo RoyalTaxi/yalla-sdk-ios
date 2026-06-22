@@ -23,9 +23,6 @@ public final class YallaMapsFactory: NSObject, IosMapRendererFactory {
     private static let lock = NSLock()
     private static var provided = false
 
-    // Mirrors Android: the key is baked into the bundle at build time (Info.plist ←
-    // GOOGLE_MAPS_API_KEY xcconfig, exactly as Android injects the manifest placeholder
-    // from local.properties). The app never passes the key in code.
     private static func provideGoogleApiKeyOnce() {
         lock.lock()
         defer { lock.unlock() }
@@ -35,8 +32,6 @@ public final class YallaMapsFactory: NSObject, IosMapRendererFactory {
         if let key, !key.isEmpty {
             GMSServices.provideAPIKey(key)
         } else {
-            // A misconfigured buyer otherwise gets a blank Google map with no signal. Surface the
-            // missing key so it's diagnosable. The key itself is never logged (none is present here).
             NSLog("[YallaMaps] GOOGLE_MAPS_API_KEY missing or empty in Info.plist; the Google backend will render blank. Set it via the GOOGLE_MAPS_API_KEY xcconfig.")
         }
     }

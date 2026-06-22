@@ -34,12 +34,6 @@ final class ContentSheet: Sheet {
         )
     }
 
-    /// The header close button exists only when the caller supplied `onClose` (the Kotlin side sets
-    /// `showClose = onClose != null`). Mirror Android, where the close button's tap is wired
-    /// directly to `onClose` and nothing else: the caller's action owns the dismissal (it flips
-    /// `isVisible`, which drives `handle.dismiss()` and the single `onDismissRequest` on teardown).
-    /// Firing the base `onDismissRequest` + dismiss here would both double-fire the dismiss callback
-    /// and force a close the caller may not have wanted.
     override func handleCloseTap() {
         onClose?()
     }

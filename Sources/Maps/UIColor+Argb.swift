@@ -1,12 +1,6 @@
 import UIKit
 
 extension UIColor {
-    /// Builds a color from a packed 0xAARRGGBB integer, the shared marker/route/circle color
-    /// representation produced by the common `uz.yalla.maps` model (`colorArgb: Int`).
-    ///
-    /// The single source of truth for ARGB→`UIColor` in the Maps target. Bridges has its own `Int64`
-    /// overload because the app target source-compiles Maps and Bridges together, where duplicate
-    /// `Int64` initializers would collide.
     convenience init(argb: Int32) {
         let value = UInt32(bitPattern: argb)
         self.init(

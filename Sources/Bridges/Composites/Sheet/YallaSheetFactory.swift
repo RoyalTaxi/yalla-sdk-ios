@@ -1,17 +1,6 @@
 import UIKit
 import YallaComponents
 
-/// Holds a single sheet wrapper for the whole lifetime of the Compose controller it wraps and
-/// re-presents that same instance on every show.
-///
-/// The wrapper is built once and never recreated. The factory sheets wrap a long-lived
-/// `ComposeUIViewController` created once on the Kotlin side (it lives for the whole composable
-/// lifetime) and add it as a child VC in `viewDidLoad`. Recreating the wrapper on re-present would
-/// `addChild` that already-parented controller without first detaching it from the previous wrapper
-/// — undefined UIKit that renders a blank / asserting sheet on the common dismiss-then-re-show path.
-/// Reusing the one wrapper also keeps `viewController` stable, so a handle that captured it (and the
-/// Kotlin `onFullyExpanded` poll that reads `handle.viewController.isBeingPresented()`) always sees
-/// the live, currently-presented controller rather than a discarded snapshot.
 private final class ReusableSheet<T: UIViewController> {
     let viewController: T
 
@@ -28,23 +17,9 @@ private final class ReusableSheet<T: UIViewController> {
     }
 }
 
-/// The iOS native implementation of the Kotlin `SheetFactory` Compose↔native bridge protocol.
-///
-/// Each `create*` method builds a native sheet view controller and returns an imperative
-/// `*Handle` of closures (`present`/`dismiss`/`update*`) the Kotlin side drives. The handle's
-/// `viewController` is the live, reused sheet — stable across re-presents. All handle closures are
-/// marshalled to the main thread, so the bridge is safe regardless of the caller's queue.
 public final class YallaSheetFactory: NSObject, SheetFactory {
-    /// Creates the factory. Instantiated by the Kotlin bridge as the `SheetFactory` conformance.
     public override init() { super.init() }
 
-    /// A bare sheet that hosts `contentController` edge-to-edge (no header/footer chrome), sizing to
-    /// the Compose content's reported height.
-    /// - Parameters:
-    ///   - fullHeight: present at the large detent instead of sizing to content.
-    ///   - sheetSwipeEnabled: allow interactive swipe-to-dismiss.
-    ///   - contentController: the Compose-hosting controller to embed; reused across re-presents.
-    ///   - onDismissRequest: fired when the sheet is dismissed (swipe or programmatic close).
     public func createShell(
         fullHeight: Bool,
         sheetSwipeEnabled: Bool,
@@ -67,16 +42,6 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         )
     }
 
-    /// A sheet that hosts `contentController` under an optional title/close-button header.
-    /// - Parameters:
-    ///   - fullHeight: present at the large detent instead of sizing to content.
-    ///   - sheetSwipeEnabled: allow interactive swipe-to-dismiss.
-    ///   - title: optional header title; `nil` hides the title.
-    ///   - showClose: show a close button in the header.
-    ///   - contentController: the Compose-hosting controller to embed; reused across re-presents.
-    ///   - onClose: the caller's explicit close action, fired when the header close button is tapped
-    ///     (distinct from `onDismissRequest`, which fires on any dismissal). `nil` if unset.
-    ///   - onDismissRequest: fired when the sheet is dismissed (swipe, backdrop, or close button).
     public func createContent(
         fullHeight: Bool,
         sheetSwipeEnabled: Bool,
@@ -105,15 +70,6 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         )
     }
 
-    /// A confirmation sheet: an illustration, header/title/description text, and a single action button.
-    /// - Parameters:
-    ///   - imageResource: an asset-catalog image name in the SDK resource bundle (not a URL).
-    ///   - isDark: render with the dark-mode illustration/colors regardless of system appearance.
-    ///   - header: optional small header above the title.
-    ///   - actionText: label for the primary action button.
-    ///   - dismissEnabled: allow swipe/backdrop dismissal.
-    ///   - onAction: fired when the action button is tapped.
-    ///   - onDismissRequest: fired when the sheet is dismissed without invoking the action.
     public func createConfirmation(
         imageResource: String,
         isDark: Bool,
@@ -135,12 +91,6 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         )
     }
 
-    /// A single-select list sheet.
-    /// - Parameters:
-    ///   - items: the selectable rows.
-    ///   - selectedId: the id of the initially-selected row, if any.
-    ///   - onSelect: fired with the selected row's id when the user picks a row.
-    ///   - onDismissRequest: fired when the sheet is dismissed without a selection.
     public func createSelection(
         title: String,
         items: [SelectableItemModel],
@@ -158,11 +108,6 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         )
     }
 
-    /// An action-list sheet (a menu of tappable rows that each fire and dismiss).
-    /// - Parameters:
-    ///   - items: the action rows.
-    ///   - onAction: fired with the tapped row's id.
-    ///   - onDismissRequest: fired when the sheet is dismissed without tapping an action.
     public func createAction(
         title: String,
         items: [ActionableItemModel],
@@ -179,14 +124,6 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         )
     }
 
-    /// A date-picker sheet.
-    /// - Parameters:
-    ///   - startDate: the initially-selected date.
-    ///   - minDate: optional earliest selectable date.
-    ///   - maxDate: optional latest selectable date.
-    ///   - dismissEnabled: allow swipe/backdrop dismissal.
-    ///   - onSelect: fired with the chosen date when the user confirms.
-    ///   - onDismissRequest: fired when the sheet is dismissed without confirming.
     public func createDatePicker(
         startDate: Date,
         minDate: Date?,
@@ -206,21 +143,6 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         )
     }
 
-    /// An OTP/verification-code sheet with a fixed-length code field and resend affordance.
-    /// - Parameters:
-    ///   - code: the initial code value.
-    ///   - codeLength: number of digits the code field expects.
-    ///   - isError: render the field in its error state (e.g. a rejected code).
-    ///   - isLoading: show the confirm button's loading state.
-    ///   - resendEnabled: enable the resend action.
-    ///   - dismissEnabled: allow swipe/backdrop dismissal.
-    ///   - alphanumeric: accept letters as well as digits and show an ASCII keyboard instead of the
-    ///     numeric keypad (mirrors the shared `PinField`'s `alphanumeric` flag).
-    ///   - onCodeChange: fired on every code edit.
-    ///   - onConfirm: fired when the confirm button is tapped.
-    ///   - onResend: fired when resend is tapped.
-    ///   - onCodeComplete: fired once the full `codeLength` is entered.
-    ///   - onDismissRequest: fired when the sheet is dismissed.
     public func createVerification(
         code: String,
         codeLength: Int32,

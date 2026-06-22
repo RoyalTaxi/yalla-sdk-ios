@@ -80,7 +80,6 @@ final class VerificationSheet: Sheet {
         self.onConfirm = onConfirm
         self.onResend = onResend
         self.onCodeComplete = onCodeComplete
-        // Opt out of content-sizing: this sheet always wants .large() for the keyboard + pin field.
         super.init(dismissEnabled: dismissEnabled, sizesToContent: false, onDismissRequest: onDismissRequest)
     }
 
@@ -115,7 +114,6 @@ final class VerificationSheet: Sheet {
         self.isLoading = isLoading
         guard isViewLoaded else { return }
 
-        // Fire the error haptic only on the no-error -> error edge so re-renders don't re-buzz.
         if !wasError && isError { Haptics.error() }
 
         descriptionLabel.text = description

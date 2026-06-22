@@ -28,12 +28,8 @@ final class SnackbarHostController: UIViewController, SnackbarItemViewDelegate {
     }
 
     func enqueue(_ item: SnackbarItem) {
-        // The host knows the semantic type (the item view only colors itself); fire the matching
-        // notification haptic here so success/error toasts feel native.
         if item.isError { Haptics.error() } else { Haptics.success() }
 
-        // Toasts are transient and easy to miss under VoiceOver — announce the (already-localized)
-        // message without stealing focus. No-ops when VoiceOver is off.
         UIAccessibility.post(notification: .announcement, argument: item.message)
 
         let stale = items

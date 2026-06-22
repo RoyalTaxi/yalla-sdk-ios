@@ -2,9 +2,6 @@ import XCTest
 import YallaComponents
 @testable import Maps
 
-/// Pins the per-frame emit-dedup boundary on the marker motion hot path (review #17). `posesClose`
-/// gates every marker write: a settled car must be treated as unchanged (skip the rewrite), while a
-/// move past the position/bearing epsilon must register. Guards the named thresholds against drift.
 final class MarkerMotionDriverTests: XCTestCase {
 
     private func pose(lat: Double, lng: Double, bearing: Float) -> Pose {

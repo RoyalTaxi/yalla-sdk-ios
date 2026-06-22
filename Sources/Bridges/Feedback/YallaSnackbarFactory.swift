@@ -1,10 +1,6 @@
 import UIKit
 import YallaComponents
 
-/// The iOS native implementation of the Kotlin `SnackbarFactory` Compose↔native bridge protocol.
-///
-/// Snackbars are hosted in a dedicated passthrough window above the app's content so they float over
-/// any presented sheet; the window is created on demand and torn down once the last toast clears.
 public final class YallaSnackbarFactory: NSObject, SnackbarFactory {
     private var window: UIWindow?
     private lazy var host: SnackbarHostController = {
@@ -13,11 +9,8 @@ public final class YallaSnackbarFactory: NSObject, SnackbarFactory {
         return controller
     }()
 
-    /// Creates the factory. Instantiated by the Kotlin bridge as the `SnackbarFactory` conformance.
     public override init() { super.init() }
 
-    /// Shows a transient toast. `isError` selects the error styling and the matching haptic.
-    /// Safe to call from any thread.
     public func show(message: String, isError: Bool) {
         onMain { [weak self] in
             guard let self else { return }
@@ -26,7 +19,6 @@ public final class YallaSnackbarFactory: NSObject, SnackbarFactory {
         }
     }
 
-    /// Dismisses all visible toasts. Safe to call from any thread.
     public func dismiss() {
         onMain { [weak self] in
             self?.host.dismissAll()

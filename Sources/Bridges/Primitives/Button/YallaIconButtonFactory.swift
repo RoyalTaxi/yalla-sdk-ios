@@ -4,21 +4,9 @@ import YallaComponents
 
 private let iconButtonColorUnset = Int64.min
 
-/// The iOS native implementation of the Kotlin `IconButtonFactory` Compose↔native bridge protocol.
 public final class YallaIconButtonFactory: NSObject, IconButtonFactory {
-    /// Creates the factory. Instantiated by the Kotlin bridge as the `IconButtonFactory` conformance.
     public override init() { super.init() }
 
-    /// Builds a native icon button.
-    /// - Parameters:
-    ///   - icon: an asset-catalog image name in the SDK resource bundle (not a URL).
-    ///   - shape: circle or rounded-rectangle container.
-    ///   - iconArgb: packed-ARGB tint for the icon; `Int64.min` means use the `icon_base` token default.
-    ///   - containerArgb: packed-ARGB container fill; `Int64.min` means transparent default (and, on
-    ///     iOS 26 circles, selects the glass-effect button).
-    ///   - borderArgb: packed-ARGB border color; `Int64.min` means no border.
-    ///   - onClick: fired when the button is tapped. The returned handle's `setIcon`/`setColors`
-    ///     closures update the live button and are marshalled to the main thread.
     public func create(
         icon: String,
         shape: IconButtonShape,
@@ -43,8 +31,6 @@ public final class YallaIconButtonFactory: NSObject, IconButtonFactory {
                 },
                 setColors: { [weak glassButton] iconArgb, _, _ in
                     onMain {
-                        // The glass button renders neither a container fill nor a border, so only
-                        // the icon tint is honored here.
                         let value = iconArgb.int64Value
                         glassButton?.setTint(iconTint(value))
                     }
