@@ -9,8 +9,8 @@ enum MapIconLoader {
     static let userLocationDotImage: UIImage = {
         let size = CGSize(width: 16, height: 16)
         let strokeWidth: CGFloat = 2 / UIScreen.main.scale
-        let start = UIColor(red: 0x34 / 255.0, green: 0, blue: 1, alpha: 1)
-        let end = UIColor(red: 0x88 / 255.0, green: 0x6B / 255.0, blue: 1, alpha: 1)
+        let start = UIColor(red: 0x56 / 255.0, green: 0x2D / 255.0, blue: 0xF8 / 255.0, alpha: 1)
+        let end = UIColor(red: 0x3D / 255.0, green: 0x1F / 255.0, blue: 0xB0 / 255.0, alpha: 1)
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { context in
             let ctx = context.cgContext
@@ -68,18 +68,8 @@ enum MapIconLoader {
         let strokeWidth = CGFloat(dot.strokeWidthDp)
         let side = CGFloat(dot.diameterDp) + strokeWidth
         let size = CGSize(width: side, height: side)
-        let fillColor = UIColor(
-            red: CGFloat((dot.fillColorArgb >> 16) & 0xFF) / 255.0,
-            green: CGFloat((dot.fillColorArgb >> 8) & 0xFF) / 255.0,
-            blue: CGFloat(dot.fillColorArgb & 0xFF) / 255.0,
-            alpha: CGFloat((dot.fillColorArgb >> 24) & 0xFF) / 255.0
-        )
-        let strokeColor = UIColor(
-            red: CGFloat((dot.strokeColorArgb >> 16) & 0xFF) / 255.0,
-            green: CGFloat((dot.strokeColorArgb >> 8) & 0xFF) / 255.0,
-            blue: CGFloat(dot.strokeColorArgb & 0xFF) / 255.0,
-            alpha: CGFloat((dot.strokeColorArgb >> 24) & 0xFF) / 255.0
-        )
+        let fillColor = UIColor(argb: dot.fillColorArgb)
+        let strokeColor = UIColor(argb: dot.strokeColorArgb)
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { context in
             let rect = CGRect(origin: .zero, size: size).insetBy(dx: strokeWidth / 2, dy: strokeWidth / 2)
@@ -107,12 +97,7 @@ enum MapIconLoader {
         let height = label != nil ? badgeHeight * 2 + markerSize : markerSize
         let size = CGSize(width: width, height: height)
 
-        let ringColor = UIColor(
-            red: CGFloat((pin.colorArgb >> 16) & 0xFF) / 255.0,
-            green: CGFloat((pin.colorArgb >> 8) & 0xFF) / 255.0,
-            blue: CGFloat(pin.colorArgb & 0xFF) / 255.0,
-            alpha: CGFloat((pin.colorArgb >> 24) & 0xFF) / 255.0
-        )
+        let ringColor = UIColor(argb: pin.colorArgb)
 
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { context in
@@ -148,8 +133,18 @@ enum MapIconLoader {
         if let pin = icon as? MapMarkerIcon.Pin { return "pin-\(pin.colorArgb)-\(pin.label ?? "")" }
         if let dot = icon as? MapMarkerIcon.Dot { return "dot-\(dot.fillColorArgb)-\(dot.strokeColorArgb)-\(dot.diameterDp)-\(dot.strokeWidthDp)" }
         if let bytes = icon as? MapMarkerIcon.Bytes {
-            return "bytes-\(bytes.data.hashValue)"
+            return "bytes-\(bytesDigest(bytes.data))"
         }
         return "unknown"
+    }
+
+    static func bytesDigest(_ array: KotlinByteArray) -> String {
+        let count = Int(array.size)
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+        for i in 0..<count {
+            hash ^= UInt64(UInt8(bitPattern: array.get(index: Int32(i))))
+            hash = hash &* 0x0000_0100_0000_01B3
+        }
+        return "\(count)-\(String(hash, radix: 16))"
     }
 }

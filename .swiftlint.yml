@@ -1,0 +1,48 @@
+
+included:
+  - Sources/Bridges
+
+opt_in_rules:
+  - missing_docs
+
+missing_docs:
+  error: [open, public]
+
+line_length:
+  warning: 140
+  error: 200
+  ignores_comments: true
+
+file_length:
+  warning: 500
+  error: 600
+
+type_body_length:
+  warning: 350
+  error: 450
+
+function_body_length:
+  warning: 60
+  error: 100
+
+cyclomatic_complexity:
+  warning: 12
+  error: 20
+
+function_parameter_count:
+  warning: 18
+  error: 22
+
+identifier_name:
+  min_length:
+    warning: 2
+    error: 1
+  excluded:
+    - a
+    - r
+    - g
+    - b
+    - h
+    - w
+    - x
+    - y

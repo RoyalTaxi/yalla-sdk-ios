@@ -40,6 +40,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
             mv.settings.rotateGestures = false
             mv.settings.tiltGestures = false
             mv.isBuildingsEnabled = false
+            mv.accessibilityElementsHidden = false
             mv.setMinZoom(Float(MapConstants.shared.ZOOM_MIN), maxZoom: Float(MapConstants.shared.ZOOM_MAX))
             mapView = mv
             applyInteractionEnabled()
@@ -80,7 +81,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
                 bearing: current?.bearing ?? 0,
                 viewingAngle: current?.viewingAngle ?? 0
             )
-            self.mapView?.animate(to: cam)
+            self.animateCamera(to: cam, durationMs: durationMs)
         }
     }
 
@@ -93,12 +94,17 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
                 bearing: CLLocationDirection(bearing),
                 viewingAngle: Double(mv.camera.viewingAngle)
             )
-            mv.animate(to: cam)
+            self.animateCamera(to: cam, durationMs: durationMs)
         }
     }
 
+    private func animateCamera(to cam: GMSCameraPosition, durationMs: Int32) {
+        _ = durationMs
+        mapView?.animate(to: cam)
+    }
+
     public func fitBounds(points: [GeoPoint], leftPt: Float, topPt: Float, rightPt: Float, bottomPt: Float, animate: Bool) {
-        let valid = points.filter { $0.lat != 0 || $0.lng != 0 }
+        let valid = points.filter { $0.hasFix }
         guard !valid.isEmpty else { return }
         if valid.count == 1 {
             let single = valid[0]
@@ -317,6 +323,14 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         }
     }
 
+    private static func pointsEqual(_ a: [GeoPoint]?, _ b: [GeoPoint]) -> Bool {
+        guard let a = a, a.count == b.count else { return false }
+        for i in 0..<a.count {
+            if abs(a[i].lat - b[i].lat) > 1e-7 || abs(a[i].lng - b[i].lng) > 1e-7 { return false }
+        }
+        return true
+    }
+
     private func renderRoutes(routes: [MapRoute]) {
         guard let map = mapView else { return }
         let incoming = Dictionary(uniqueKeysWithValues: routes.map { ($0.id, $0) })
@@ -326,16 +340,21 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
             routeData.removeValue(forKey: id)
         }
         for (id, route) in incoming {
-            let path = GMSMutablePath()
-            for p in route.points { path.add(CLLocationCoordinate2D(latitude: p.lat, longitude: p.lng)) }
+            let previous = routeData[id]
             if let existing = renderedRoutes[id] {
-                existing.path = path
-                existing.strokeColor = uiColor(fromArgb: route.colorArgb)
-                existing.strokeWidth = CGFloat(route.widthDp)
-                existing.zIndex = Int32(route.zIndex)
+                if !Self.pointsEqual(previous?.points, route.points) {
+                    let path = GMSMutablePath()
+                    for p in route.points { path.add(CLLocationCoordinate2D(latitude: p.lat, longitude: p.lng)) }
+                    existing.path = path
+                }
+                if previous?.colorArgb != route.colorArgb { existing.strokeColor = UIColor(argb: route.colorArgb) }
+                if previous?.widthDp != route.widthDp { existing.strokeWidth = CGFloat(route.widthDp) }
+                if previous?.zIndex != route.zIndex { existing.zIndex = Int32(route.zIndex) }
             } else {
+                let path = GMSMutablePath()
+                for p in route.points { path.add(CLLocationCoordinate2D(latitude: p.lat, longitude: p.lng)) }
                 let line = GMSPolyline(path: path)
-                line.strokeColor = uiColor(fromArgb: route.colorArgb)
+                line.strokeColor = UIColor(argb: route.colorArgb)
                 line.strokeWidth = CGFloat(route.widthDp)
                 line.zIndex = Int32(route.zIndex)
                 line.map = map
@@ -357,14 +376,14 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
             if let existing = renderedCircles[id] {
                 existing.position = CLLocationCoordinate2D(latitude: circle.center.lat, longitude: circle.center.lng)
                 existing.radius = CLLocationDistance(circle.radiusMeters)
-                existing.fillColor = uiColor(fromArgb: circle.fillColorArgb)
-                existing.strokeColor = uiColor(fromArgb: circle.strokeColorArgb)
+                existing.fillColor = UIColor(argb: circle.fillColorArgb)
+                existing.strokeColor = UIColor(argb: circle.strokeColorArgb)
                 existing.strokeWidth = CGFloat(circle.strokeWidthDp)
                 existing.zIndex = Int32(circle.zIndex)
             } else {
                 let c = GMSCircle(position: CLLocationCoordinate2D(latitude: circle.center.lat, longitude: circle.center.lng), radius: CLLocationDistance(circle.radiusMeters))
-                c.fillColor = uiColor(fromArgb: circle.fillColorArgb)
-                c.strokeColor = uiColor(fromArgb: circle.strokeColorArgb)
+                c.fillColor = UIColor(argb: circle.fillColorArgb)
+                c.strokeColor = UIColor(argb: circle.strokeColorArgb)
                 c.strokeWidth = CGFloat(circle.strokeWidthDp)
                 c.zIndex = Int32(circle.zIndex)
                 c.map = map
@@ -399,21 +418,12 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
             circle.position = coordinate
         } else {
             let circle = GMSCircle(position: coordinate, radius: 50)
-            circle.fillColor = uiColor(fromArgb: 0x33562DF8)
-            circle.strokeColor = uiColor(fromArgb: 0x66562DF8)
+            circle.fillColor = UIColor(argb: 0x33562DF8 as Int32)
+            circle.strokeColor = UIColor(argb: 0x66562DF8 as Int32)
             circle.strokeWidth = 1
             circle.map = map
             userLocationCircle = circle
         }
-    }
-
-    private func uiColor(fromArgb argb: Int32) -> UIColor {
-        let value = UInt32(bitPattern: argb)
-        let a = CGFloat((value >> 24) & 0xFF) / 255.0
-        let r = CGFloat((value >> 16) & 0xFF) / 255.0
-        let g = CGFloat((value >> 8) & 0xFF) / 255.0
-        let b = CGFloat(value & 0xFF) / 255.0
-        return UIColor(red: r, green: g, blue: b, alpha: a)
     }
 
     public func mapView(_ mapView: GMSMapView, willMove gesture: Bool) {
@@ -461,11 +471,11 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         userInitiatedMove = false
     }
 
-    private func cameraEpsilonEqual(_ a: GMSCameraPosition, _ b: GMSCameraPosition) -> Bool {
-        return abs(a.target.latitude - b.target.latitude) < 1e-6 &&
-            abs(a.target.longitude - b.target.longitude) < 1e-6 &&
-            abs(a.zoom - b.zoom) < 1e-3 &&
-            abs(a.bearing - b.bearing) < 0.1 &&
-            abs(a.viewingAngle - b.viewingAngle) < 0.1
+    func cameraEpsilonEqual(_ a: GMSCameraPosition, _ b: GMSCameraPosition) -> Bool {
+        return abs(a.target.latitude - b.target.latitude) < MapEpsilon.positionDegrees &&
+            abs(a.target.longitude - b.target.longitude) < MapEpsilon.positionDegrees &&
+            abs(a.zoom - b.zoom) < MapEpsilon.zoom &&
+            abs(a.bearing - b.bearing) < MapEpsilon.angleDegrees &&
+            abs(a.viewingAngle - b.viewingAngle) < MapEpsilon.angleDegrees
     }
 }

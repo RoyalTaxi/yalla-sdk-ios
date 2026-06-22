@@ -53,6 +53,7 @@ final class DatePickerSheet: Sheet {
     }
 
     private func confirmSelection() {
+        Haptics.impact(.medium)
         onSelect(datePicker.date)
         dismiss(animated: true)
     }

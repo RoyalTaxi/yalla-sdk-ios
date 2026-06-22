@@ -46,6 +46,8 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             mv.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             mv.automaticallyAdjustsContentInset = false
             mv.compassView.isHidden = true
+            mv.showsAttributionButton = false
+            mv.showsLogoView = false
             mv.isRotateEnabled = false
             mv.isPitchEnabled = false
             mv.minimumZoomLevel = MapConstants.shared.ZOOM_MIN
@@ -110,33 +112,25 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     public func animateTo(target: GeoPoint, zoom: Float, durationMs: Int32) {
         runOnMain {
             guard let mv = self.mapView else { return }
-            let cam = MLNMapCamera(
-                lookingAtCenter: CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng),
-                altitude: mv.camera.altitude,
-                pitch: mv.camera.pitch,
-                heading: mv.camera.heading
-            )
-            mv.setZoomLevel(Double(self.clampZoom(zoom)), animated: false)
-            mv.setCamera(cam, withDuration: Double(durationMs) / 1000.0, animationTimingFunction: nil)
+            self.animateCamera(to: target, zoom: zoom, heading: mv.camera.heading, durationMs: durationMs)
         }
     }
 
     public func animateToWithBearing(target: GeoPoint, bearing: Float, zoom: Float, durationMs: Int32) {
         runOnMain {
-            guard let mv = self.mapView else { return }
-            let cam = MLNMapCamera(
-                lookingAtCenter: CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng),
-                altitude: mv.camera.altitude,
-                pitch: mv.camera.pitch,
-                heading: CLLocationDirection(bearing)
-            )
-            mv.setZoomLevel(Double(self.clampZoom(zoom)), animated: false)
-            mv.setCamera(cam, withDuration: Double(durationMs) / 1000.0, animationTimingFunction: nil)
+            self.animateCamera(to: target, zoom: zoom, heading: CLLocationDirection(bearing), durationMs: durationMs)
         }
     }
 
+    private func animateCamera(to target: GeoPoint, zoom: Float, heading: CLLocationDirection, durationMs: Int32) {
+        _ = durationMs
+        guard let mv = mapView else { return }
+        let center = CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng)
+        mv.setCenter(center, zoomLevel: Double(clampZoom(zoom)), direction: heading, animated: true)
+    }
+
     public func fitBounds(points: [GeoPoint], leftPt: Float, topPt: Float, rightPt: Float, bottomPt: Float, animate: Bool) {
-        let valid = points.filter { $0.lat != 0 || $0.lng != 0 }
+        let valid = points.filter { $0.hasFix }
         guard !valid.isEmpty else { return }
         if valid.count == 1 {
             let single = valid[0]
@@ -214,7 +208,6 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     }
 
     public func setStyleJson(json: String) {
-        // MapLibre iOS accepts JSON via MLNStyle.styleJSON — but routing is rare in practice; ignore.
     }
 
     public func setColorScheme(isDark: Bool) {
@@ -258,7 +251,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         dispatchPrecondition(condition: .onQueue(.main))
         if !circles.isEmpty && !warnedCirclesUnsupported {
             warnedCirclesUnsupported = true
-            NSLog("[YallaMaps] MapLibre does not support geographic circles; setCircles is a no-op. MapCapabilities.LIBRE.supportsCircles = false.")
+            NSLog("[YallaMaps] MapLibre does not support geographic circles; setCircles is a no-op.")
         }
     }
 
@@ -374,6 +367,14 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         }
     }
 
+    private static func pointsEqual(_ a: [GeoPoint]?, _ b: [GeoPoint]) -> Bool {
+        guard let a = a, a.count == b.count else { return false }
+        for i in 0..<a.count {
+            if abs(a[i].lat - b[i].lat) > 1e-7 || abs(a[i].lng - b[i].lng) > 1e-7 { return false }
+        }
+        return true
+    }
+
     private func renderRoutes(routes: [MapRoute]) {
         guard let style = style else { return }
         let incoming = Dictionary(uniqueKeysWithValues: routes.map { ($0.id, $0) })
@@ -386,19 +387,23 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         }
         for (id, route) in incoming {
             let previous = routeData[id]
-            var coords = route.points.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng) }
-            let polyline = MLNPolylineFeature(coordinates: &coords, count: UInt(coords.count))
+            let pointsChanged = !Self.pointsEqual(previous?.points, route.points)
             if let source = routeSources[id] {
-                source.shape = polyline
+                if pointsChanged {
+                    var coords = route.points.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng) }
+                    source.shape = MLNPolylineFeature(coordinates: &coords, count: UInt(coords.count))
+                }
                 if let layer = routeLayers[id] {
                     if previous?.colorArgb != route.colorArgb {
-                        layer.lineColor = NSExpression(forConstantValue: uiColor(fromArgb: route.colorArgb))
+                        layer.lineColor = NSExpression(forConstantValue: UIColor(argb: route.colorArgb))
                     }
                     if previous?.widthDp != route.widthDp {
                         layer.lineWidth = NSExpression(forConstantValue: route.widthDp)
                     }
                 }
             } else {
+                var coords = route.points.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng) }
+                let polyline = MLNPolylineFeature(coordinates: &coords, count: UInt(coords.count))
                 let sourceId = "yalla-route-src-\(id)"
                 let layerId = "yalla-route-lyr-\(id)"
                 let source = MLNShapeSource(identifier: sourceId, shape: polyline, options: nil)
@@ -406,9 +411,13 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
                 let layer = MLNLineStyleLayer(identifier: layerId, source: source)
                 layer.lineCap = NSExpression(forConstantValue: "round")
                 layer.lineJoin = NSExpression(forConstantValue: "round")
-                layer.lineColor = NSExpression(forConstantValue: uiColor(fromArgb: route.colorArgb))
+                layer.lineColor = NSExpression(forConstantValue: UIColor(argb: route.colorArgb))
                 layer.lineWidth = NSExpression(forConstantValue: route.widthDp)
-                style.addLayer(layer)
+                if let firstSymbol = style.layers.first(where: { $0 is MLNSymbolStyleLayer }) {
+                    style.insertLayer(layer, below: firstSymbol)
+                } else {
+                    style.addLayer(layer)
+                }
                 routeSources[id] = source
                 routeLayers[id] = layer
             }
@@ -435,8 +444,8 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         } else {
             let annotation = MLNPointAnnotation()
             annotation.coordinate = coordinate
-            mv.addAnnotation(annotation)
             userLocationAnnotation = annotation
+            mv.addAnnotation(annotation)
         }
         guard let style = style else { return }
         let feature = MLNPointFeature()
@@ -455,8 +464,8 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             style.addSource(source)
             let layer = MLNCircleStyleLayer(identifier: "yalla-user-location-lyr", source: source)
             layer.circleRadius = radiusExpression
-            layer.circleColor = NSExpression(forConstantValue: uiColor(fromArgb: 0x33562DF8))
-            layer.circleStrokeColor = NSExpression(forConstantValue: uiColor(fromArgb: 0x66562DF8))
+            layer.circleColor = NSExpression(forConstantValue: UIColor(argb: 0x33562DF8 as Int32))
+            layer.circleStrokeColor = NSExpression(forConstantValue: UIColor(argb: 0x66562DF8 as Int32))
             layer.circleStrokeWidth = NSExpression(forConstantValue: 1)
             style.addLayer(layer)
             userLocationSource = source
@@ -520,22 +529,13 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         return MLNAnnotationImage(image: image, reuseIdentifier: sharedKey)
     }
 
-    private func uiColor(fromArgb argb: Int32) -> UIColor {
-        let value = UInt32(bitPattern: argb)
-        let a = CGFloat((value >> 24) & 0xFF) / 255.0
-        let r = CGFloat((value >> 16) & 0xFF) / 255.0
-        let g = CGFloat((value >> 8) & 0xFF) / 255.0
-        let b = CGFloat(value & 0xFF) / 255.0
-        return UIColor(red: r, green: g, blue: b, alpha: a)
-    }
-
     private func sharedIconKey(for icon: MapMarkerIcon) -> String {
         if let res = icon as? MapMarkerIcon.Resource { return "yalla-icon-res-\(res.name)" }
         if let pin = icon as? MapMarkerIcon.Pin {
             return "yalla-icon-pin-\(pin.colorArgb)-\(pin.label ?? "")"
         }
         if let bytes = icon as? MapMarkerIcon.Bytes {
-            return "yalla-icon-bytes-\(bytes.data.hashValue)"
+            return "yalla-icon-bytes-\(MapIconLoader.bytesDigest(bytes.data))"
         }
         if let dot = icon as? MapMarkerIcon.Dot {
             return "yalla-icon-dot-\(dot.fillColorArgb)-\(dot.strokeColorArgb)-\(dot.diameterDp)-\(dot.strokeWidthDp)"
@@ -543,7 +543,8 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         return "yalla-icon-unknown"
     }
 
-    private func centerEpsilonEqual(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Bool {
-        return abs(a.latitude - b.latitude) < 1e-6 && abs(a.longitude - b.longitude) < 1e-6
+    func centerEpsilonEqual(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Bool {
+        return abs(a.latitude - b.latitude) < MapEpsilon.positionDegrees &&
+            abs(a.longitude - b.longitude) < MapEpsilon.positionDegrees
     }
 }

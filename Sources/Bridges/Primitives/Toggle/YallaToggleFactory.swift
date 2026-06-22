@@ -7,15 +7,14 @@ public final class YallaToggleFactory: NSObject, ToggleFactory {
     public func create(
         initialChecked: Bool,
         initialEnabled: Bool,
-        thumbArgb: Int64,
-        trackArgb: Int64,
+        colors: ToggleColors,
         onCheckedChange: @escaping (KotlinBoolean) -> Void
     ) -> ToggleHandle {
         let toggle = UISwitch()
         toggle.isOn = initialChecked
         toggle.isEnabled = initialEnabled
-        if thumbArgb != 0 { toggle.thumbTintColor = UIColor(argb: thumbArgb) }
-        if trackArgb != 0 { toggle.onTintColor = UIColor(argb: trackArgb) }
+        let colorBox = ColorBox(colors)
+        Self.applyColors(colorBox.colors, to: toggle)
         toggle.addAction(
             UIAction { [weak toggle] _ in
                 guard let toggle else { return }
@@ -30,28 +29,49 @@ public final class YallaToggleFactory: NSObject, ToggleFactory {
         return ToggleHandle(
             viewController: viewController,
             setChecked: { [weak toggle] newChecked in
-                toggle?.setOn(newChecked.boolValue, animated: true)
+                onMain {
+                    guard let toggle else { return }
+                    toggle.setOn(newChecked.boolValue, animated: true)
+                    Self.applyColors(colorBox.colors, to: toggle)
+                }
             },
             setEnabled: { [weak toggle] newEnabled in
-                toggle?.isEnabled = newEnabled.boolValue
+                onMain {
+                    guard let toggle else { return }
+                    toggle.isEnabled = newEnabled.boolValue
+                    Self.applyColors(colorBox.colors, to: toggle)
+                }
             },
-            setColors: { [weak toggle] newThumbArgb, newTrackArgb in
-                guard let toggle else { return }
-                let thumb = newThumbArgb.int64Value
-                let track = newTrackArgb.int64Value
-                toggle.thumbTintColor = thumb == 0 ? nil : UIColor(argb: thumb)
-                toggle.onTintColor = track == 0 ? nil : UIColor(argb: track)
+            setColors: { [weak toggle] newColors in
+                onMain {
+                    guard let toggle else { return }
+                    colorBox.colors = newColors
+                    Self.applyColors(newColors, to: toggle)
+                }
             }
         )
     }
-}
 
-private extension UIColor {
-    convenience init(argb: Int64) {
-        let a = CGFloat((argb >> 24) & 0xFF) / 255.0
-        let r = CGFloat((argb >> 16) & 0xFF) / 255.0
-        let g = CGFloat((argb >> 8) & 0xFF) / 255.0
-        let b = CGFloat(argb & 0xFF) / 255.0
-        self.init(red: r, green: g, blue: b, alpha: a)
+    private final class ColorBox {
+        var colors: ToggleColors
+        init(_ colors: ToggleColors) { self.colors = colors }
+    }
+
+    private static func applyColors(_ colors: ToggleColors, to toggle: UISwitch) {
+        let enabled = toggle.isEnabled
+        let checked = toggle.isOn
+        let thumbArgb: Int64
+        switch (checked, enabled) {
+        case (true, true): thumbArgb = colors.checkedThumbArgb
+        case (false, true): thumbArgb = colors.uncheckedThumbArgb
+        case (true, false): thumbArgb = colors.disabledCheckedThumbArgb
+        case (false, false): thumbArgb = colors.disabledUncheckedThumbArgb
+        }
+        let onTrackArgb = enabled ? colors.checkedTrackArgb : colors.disabledCheckedTrackArgb
+        let offTrackArgb = enabled ? colors.uncheckedTrackArgb : colors.disabledUncheckedTrackArgb
+
+        toggle.thumbTintColor = thumbArgb == 0 ? nil : UIColor(argb: thumbArgb)
+        toggle.onTintColor = onTrackArgb == 0 ? nil : UIColor(argb: onTrackArgb)
+        toggle.tintColor = offTrackArgb == 0 ? nil : UIColor(argb: offTrackArgb)
     }
 }

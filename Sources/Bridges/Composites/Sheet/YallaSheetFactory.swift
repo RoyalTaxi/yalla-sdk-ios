@@ -2,22 +2,18 @@ import UIKit
 import YallaComponents
 
 private final class ReusableSheet<T: UIViewController> {
-    private let make: () -> T
-    private var reuseFirst = true
-    private(set) var viewController: T
+    let viewController: T
 
-    init(_ make: @escaping () -> T) {
-        self.make = make
+    init(_ make: () -> T) {
         self.viewController = make()
     }
 
     func present(on parent: UIViewController) {
-        if reuseFirst { reuseFirst = false } else { viewController = make() }
-        parent.present(viewController, animated: true)
+        onMain { parent.presentSerialized(self.viewController, animated: true) }
     }
 
     func dismiss() {
-        viewController.dismiss(animated: true)
+        onMain { self.viewController.dismiss(animated: true) }
     }
 }
 
@@ -42,7 +38,7 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
             viewController: reusable.viewController,
             present: { reusable.present(on: $0) },
             dismiss: { reusable.dismiss() },
-            updateContentHeight: { reusable.viewController.updateComposeContentHeight(CGFloat(truncating: $0)) }
+            updateContentHeight: { height in onMain { reusable.viewController.updateComposeContentHeight(CGFloat(truncating: height)) } }
         )
     }
 
@@ -52,6 +48,7 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         title: String?,
         showClose: Bool,
         contentController: UIViewController,
+        onClose: (() -> Void)?,
         onDismissRequest: @escaping () -> Void
     ) -> ContentSheetHandle {
         let reusable = ReusableSheet {
@@ -61,6 +58,7 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
                 title: title,
                 showClose: showClose,
                 contentController: contentController,
+                onClose: onClose,
                 onDismissRequest: onDismissRequest
             )
         }
@@ -68,7 +66,7 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
             viewController: reusable.viewController,
             present: { reusable.present(on: $0) },
             dismiss: { reusable.dismiss() },
-            updateContentHeight: { reusable.viewController.updateComposeContentHeight(CGFloat(truncating: $0)) }
+            updateContentHeight: { height in onMain { reusable.viewController.updateComposeContentHeight(CGFloat(truncating: height)) } }
         )
     }
 
@@ -157,6 +155,7 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         isLoading: Bool,
         resendEnabled: Bool,
         dismissEnabled: Bool,
+        alphanumeric: Bool,
         onCodeChange: @escaping (String) -> Void,
         onConfirm: @escaping () -> Void,
         onResend: @escaping () -> Void,
@@ -175,6 +174,7 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
             isLoading: isLoading,
             resendEnabled: resendEnabled,
             dismissEnabled: dismissEnabled,
+            alphanumeric: alphanumeric,
             onCodeChange: onCodeChange,
             onConfirm: onConfirm,
             onResend: onResend,
@@ -185,135 +185,27 @@ public final class YallaSheetFactory: NSObject, SheetFactory {
         return VerificationSheetHandle(
             viewController: viewController,
             present: { [weak viewController] parent in
-                guard let viewController else { return }
-                parent.present(viewController, animated: true)
+                onMain {
+                    guard let viewController else { return }
+                    parent.presentSerialized(viewController, animated: true)
+                }
             },
             update: { [weak viewController] code, description, isError, isLoading, resendText, resendEnabled in
-                viewController?.update(
-                    code: code,
-                    description: description,
-                    isError: isError.boolValue,
-                    isLoading: isLoading.boolValue,
-                    resendText: resendText,
-                    resendEnabled: resendEnabled.boolValue
-                )
+                onMain {
+                    viewController?.update(
+                        code: code,
+                        description: description,
+                        isError: isError.boolValue,
+                        isLoading: isLoading.boolValue,
+                        resendText: resendText,
+                        resendEnabled: resendEnabled.boolValue
+                    )
+                }
             },
             dismiss: { [weak viewController] in
-                viewController?.dismiss(animated: true)
+                onMain { viewController?.dismiss(animated: true) }
             }
         )
     }
 
-    public func createPromoCode(
-        code: String,
-        title: String,
-        headline: String,
-        placeholder: String,
-        hint: String,
-        confirmText: String,
-        isLoading: Bool,
-        onCodeChange: @escaping (String) -> Void,
-        onSubmit: @escaping () -> Void,
-        onDismissRequest: @escaping () -> Void
-    ) -> PromoCodeSheetHandle {
-        let viewController = PromoCodeSheet(
-            code: code,
-            title: title,
-            headline: headline,
-            placeholder: placeholder,
-            hint: hint,
-            confirmText: confirmText,
-            isLoading: isLoading,
-            onCodeChange: onCodeChange,
-            onSubmit: onSubmit,
-            onDismissRequest: onDismissRequest
-        )
-        return PromoCodeSheetHandle(
-            viewController: viewController,
-            present: { [weak viewController] parent in
-                guard let viewController else { return }
-                parent.present(viewController, animated: true)
-            },
-            update: { [weak viewController] code, isLoading in
-                viewController?.update(code: code, isLoading: isLoading.boolValue)
-            },
-            dismiss: { [weak viewController] in
-                viewController?.dismiss(animated: true)
-            }
-        )
-    }
-
-    public func createAddCard(
-        cardNumber: String,
-        cardExpiry: String,
-        title: String,
-        cardNumberPlaceholder: String,
-        expiryPlaceholder: String,
-        confirmText: String,
-        isError: Bool,
-        isLoading: Bool,
-        onCardNumberChange: @escaping (String) -> Void,
-        onExpiryChange: @escaping (String) -> Void,
-        onSubmit: @escaping () -> Void,
-        onDismissRequest: @escaping () -> Void
-    ) -> AddCardSheetHandle {
-        let viewController = AddCardSheet(
-            cardNumber: cardNumber,
-            cardExpiry: cardExpiry,
-            title: title,
-            cardNumberPlaceholder: cardNumberPlaceholder,
-            expiryPlaceholder: expiryPlaceholder,
-            confirmText: confirmText,
-            isError: isError,
-            isLoading: isLoading,
-            onCardNumberChange: onCardNumberChange,
-            onExpiryChange: onExpiryChange,
-            onSubmit: onSubmit,
-            onDismissRequest: onDismissRequest
-        )
-        return AddCardSheetHandle(
-            viewController: viewController,
-            present: { [weak viewController] parent in
-                guard let viewController else { return }
-                parent.present(viewController, animated: true)
-            },
-            update: { [weak viewController] cardNumber, cardExpiry, isError, isLoading in
-                viewController?.update(
-                    cardNumber: cardNumber,
-                    cardExpiry: cardExpiry,
-                    isError: isError.boolValue,
-                    isLoading: isLoading.boolValue
-                )
-            },
-            dismiss: { [weak viewController] in
-                viewController?.dismiss(animated: true)
-            }
-        )
-    }
-
-    public func createNotificationDetail(
-        title: String,
-        date: String,
-        body: String,
-        imageUrl: String?,
-        onDismissRequest: @escaping () -> Void
-    ) -> NotificationDetailSheetHandle {
-        let viewController = NotificationDetailSheet(
-            title: title,
-            date: date,
-            body: body,
-            imageUrl: imageUrl,
-            onDismissRequest: onDismissRequest
-        )
-        return NotificationDetailSheetHandle(
-            viewController: viewController,
-            present: { [weak viewController] parent in
-                guard let viewController else { return }
-                parent.present(viewController, animated: true)
-            },
-            dismiss: { [weak viewController] in
-                viewController?.dismiss(animated: true)
-            }
-        )
-    }
 }

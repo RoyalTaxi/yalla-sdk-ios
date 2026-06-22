@@ -68,19 +68,13 @@ class Sheet: UIViewController {
         }
     }
 
-    // MARK: - Content sizing
-
     func updateContentHeight(_ contentHeight: CGFloat) {
-        // UIKit adds the bottom safe area to a custom detent automatically, so exclude it here.
         guard contentHeight.isFinite, contentHeight > 0 else { return }
         let chrome = headerHeightConstraint.constant
             + (footerZeroHeightConstraint.isActive ? 0 : Self.footerHeight)
         let total = (contentHeight + chrome).rounded()
         guard total != measuredHeight else { return }
         measuredHeight = total
-        // Defer detent invalidation out of the current layout/CA transaction. Compose calls this
-        // from inside its measure pass via onSizeChanged; calling invalidateDetents synchronously
-        // there throws an NSException from UIKit, which K/N propagates as an unhandled Throwable.
         if #available(iOS 16.0, *) {
             let animate = hasReportedContentHeight
             hasReportedContentHeight = true
@@ -97,11 +91,14 @@ class Sheet: UIViewController {
 
     func preferredContentHeight() -> CGFloat? { nil }
 
-    // MARK: - Icon buttons
-
     func makeIconButton(icon: String, _ onTap: @escaping () -> Void) -> IconButtonHandle {
         YallaIconButtonFactory().create(
-            icon: icon, shape: .circle, iconArgb: 0, containerArgb: 0, borderArgb: 0, onClick: onTap
+            icon: icon,
+            shape: .circle,
+            iconArgb: Int64.min,
+            containerArgb: Int64.min,
+            borderArgb: Int64.min,
+            onClick: onTap
         )
     }
 
@@ -113,8 +110,6 @@ class Sheet: UIViewController {
         onDismissRequest()
         dismiss(animated: true)
     }
-
-    // MARK: - Slots
 
     func setHeader(title: String?, showClose: Bool, action actionVC: UIViewController? = nil, closeOnTrailing: Bool = false) {
         let hasContent = title != nil || showClose || actionVC != nil
@@ -245,8 +240,6 @@ class Sheet: UIViewController {
         controller?.didMove(toParent: self)
     }
 
-    // MARK: - Scaffold
-
     private func buildScaffold() {
         headerContainer.backgroundColor = UIColor.yalla("background_base")
         footerContainer.backgroundColor = UIColor.yalla("background_base")
@@ -307,8 +300,6 @@ class Sheet: UIViewController {
         container.layer.shadowOpacity = 0
     }
 
-    // MARK: - Elevation
-
     private func updateElevation() {
         guard let scrollView = elevationScrollView else { return }
         let atTop = scrollView.contentOffset.y <= 0.5
@@ -322,8 +313,6 @@ class Sheet: UIViewController {
         guard container.layer.shadowOpacity != target else { return }
         container.layer.shadowOpacity = target
     }
-
-    // MARK: - Presentation
 
     private func configurePresentation() {
         modalPresentationStyle = .pageSheet

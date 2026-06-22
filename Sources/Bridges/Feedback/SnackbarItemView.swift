@@ -99,6 +99,7 @@ final class SnackbarItemView: UIView {
                 abs(translation.x) > widthThreshold || abs(velocity.x) > velocityThreshold
 
             if shouldDismiss {
+                Haptics.impact(.light)
                 autoDismissWorkItem?.cancel()
                 let targetX: CGFloat = translation.x > 0 ? bounds.width : -bounds.width
                 UIView.animate(

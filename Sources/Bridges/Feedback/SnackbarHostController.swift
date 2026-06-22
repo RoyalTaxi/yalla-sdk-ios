@@ -28,6 +28,10 @@ final class SnackbarHostController: UIViewController, SnackbarItemViewDelegate {
     }
 
     func enqueue(_ item: SnackbarItem) {
+        if item.isError { Haptics.error() } else { Haptics.success() }
+
+        UIAccessibility.post(notification: .announcement, argument: item.message)
+
         let stale = items
         items.removeAll()
 
