@@ -49,7 +49,10 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
     // exposes a connector for that marker and torn down when it goes nil.
     private var connectorLines: [String: GMSPolyline] = [:]
 
-    public override init() { super.init() }
+    public init(routeFollowingEnabled: Bool = false) {
+        self.routeFollowingEnabled = routeFollowingEnabled
+        super.init()
+    }
 
     public func createViewController() -> UIViewController {
         dispatchPrecondition(condition: .onQueue(.main))

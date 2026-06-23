@@ -56,8 +56,9 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         onConnector: { [weak self] markerId, connector in self?.applyConnector(markerId: markerId, connector: connector) }
     )
 
-    public init(styleURL: String) {
+    public init(styleURL: String, routeFollowingEnabled: Bool = false) {
         self.styleURL = styleURL
+        self.routeFollowingEnabled = routeFollowingEnabled
         super.init()
     }
 
