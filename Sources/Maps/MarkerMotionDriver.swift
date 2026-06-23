@@ -234,12 +234,10 @@ final class MarkerMotionDriver: NSObject {
             defaultDurationMs: 10_000,
             routeFollowingEnabled: true,
             routeConfig: RouteFollowingConfig(
-                routeSnapThreshold: 30.0,
                 routeArrivalThreshold: 25.0,
                 connectorHideThreshold: 4.0,
                 offRouteEnterMeters: 30.0,
                 offRouteExitMeters: 15.0,
-                refetchCooldownMillis: 15_000,
                 backWindowMeters: 5.0,
                 forwardWindowMeters: 50.0,
                 maxHeadingTurnRatePerSecond: 120.0

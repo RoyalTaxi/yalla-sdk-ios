@@ -32,7 +32,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
     /// route-following; with it off, `followsRouteId` markers stay pure chord interpolators and the
     /// motion model's `setRoute` is a no-op. Platform flips are done interactively on-device, not in
     /// the SDK (see yalla-sdk ADR 0003).
-    public var routeFollowingEnabled = false
+    public let routeFollowingEnabled: Bool
     private lazy var motion = MarkerMotionDriver(
         routeFollowingEnabled: routeFollowingEnabled,
         onFrame: { [weak self] poses in self?.applyMarkerPoses(poses) },
