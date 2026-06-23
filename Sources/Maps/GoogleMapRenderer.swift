@@ -26,7 +26,28 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
     private var routeData: [String: MapRoute] = [:]
     private var circleData: [String: MapCircle] = [:]
     private var userInitiatedMove = false
-    private lazy var motion = MarkerMotionDriver { [weak self] poses in self?.applyMarkerPoses(poses) }
+
+    /// Feature flag — chord interpolation is the production default. Flip this to `true` *before the
+    /// map is created* (i.e. before ``createViewController()``) to opt this renderer into
+    /// route-following; with it off, `followsRouteId` markers stay pure chord interpolators and the
+    /// motion model's `setRoute` is a no-op. Platform flips are done interactively on-device, not in
+    /// the SDK (see yalla-sdk ADR 0003).
+    public var routeFollowingEnabled = false
+    private lazy var motion = MarkerMotionDriver(
+        routeFollowingEnabled: routeFollowingEnabled,
+        onFrame: { [weak self] poses in self?.applyMarkerPoses(poses) },
+        onRoute: { [weak self] markerId, points in self?.applyRemainingRoute(markerId: markerId, points: points) },
+        onConnector: { [weak self] markerId, connector in self?.applyConnector(markerId: markerId, connector: connector) }
+    )
+    // markerId -> routeId for flat markers that declared `followsRouteId`, so the trimmed route
+    // from the motion model can be written back to the right polyline as the car eats it.
+    private var followedRouteByMarker: [String: String] = [:]
+    // markerId -> the full route geometry last seeded into the motion model, so we only re-seed
+    // (and re-project) when the followed route actually changes.
+    private var seededRoutePoints: [String: [GeoPoint]] = [:]
+    // markerId -> the honesty connector line (raw GPS -> snapped car), drawn only while the model
+    // exposes a connector for that marker and torn down when it goes nil.
+    private var connectorLines: [String: GMSPolyline] = [:]
 
     public override init() { super.init() }
 
@@ -239,6 +260,10 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         markerData.removeAll()
         routeData.removeAll()
         circleData.removeAll()
+        followedRouteByMarker.removeAll()
+        seededRoutePoints.removeAll()
+        connectorLines.values.forEach { $0.map = nil }
+        connectorLines.removeAll()
         userLocationMarker?.map = nil
         userLocationCircle?.map = nil
         userLocationMarker = nil
@@ -277,13 +302,17 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         stale.forEach { id in
             renderedMarkers.removeValue(forKey: id)?.map = nil
             markerData.removeValue(forKey: id)
+            followedRouteByMarker.removeValue(forKey: id)
+            seededRoutePoints.removeValue(forKey: id)
+            connectorLines.removeValue(forKey: id)?.map = nil
         }
         for (id, marker) in incoming {
             let previous = markerData[id]
             if let existing = renderedMarkers[id] {
                 let moved = previous?.point != marker.point || previous?.rotation != marker.rotation
+                let motionChanged = moved || previous?.routeHeading != marker.routeHeading
                 if marker.flat {
-                    if moved { motion.push(id: id, point: marker.point, routeHeading: marker.routeHeading?.floatValue, serverHeading: marker.rotation) }
+                    if motionChanged { motion.push(id: id, point: marker.point, routeHeading: marker.routeHeading?.floatValue, serverHeading: marker.rotation) }
                 } else if moved {
                     existing.position = CLLocationCoordinate2D(latitude: marker.point.lat, longitude: marker.point.lng)
                     existing.rotation = CLLocationDegrees(marker.rotation)
@@ -309,6 +338,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
                 renderedMarkers[id] = m
                 if marker.flat { motion.push(id: id, point: marker.point, routeHeading: marker.routeHeading?.floatValue, serverHeading: marker.rotation) }
             }
+            if marker.flat { applyFollowedRoute(markerId: id, marker: marker) }
             markerData[id] = marker
         }
         motion.retain(ids: Set(incoming.values.filter { $0.flat }.map { $0.id }))
@@ -320,6 +350,63 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
             guard let marker = renderedMarkers[id] else { continue }
             marker.position = CLLocationCoordinate2D(latitude: pose.point.lat, longitude: pose.point.lng)
             marker.rotation = CLLocationDegrees(pose.bearing)
+        }
+    }
+
+    /// Glues a flat marker to the route it declared via `followsRouteId`, or detaches it when the
+    /// declaration (or the route's geometry) is gone/changed. The route points come from the
+    /// matching `MapRoute`; the motion model then drives the car along that arc length and emits
+    /// the trimmed remainder through `onRoute`.
+    private func applyFollowedRoute(markerId: String, marker: MapMarker) {
+        guard let routeId = marker.followsRouteId,
+              let route = routeData[routeId] ?? pendingRoutes.first(where: { $0.id == routeId }) else {
+            if followedRouteByMarker.removeValue(forKey: markerId) != nil {
+                seededRoutePoints.removeValue(forKey: markerId)
+                motion.setRoute(id: markerId, route: nil)
+            }
+            return
+        }
+        followedRouteByMarker[markerId] = routeId
+        // Re-seed only when the followed geometry changed; the model's setRoute re-projects the
+        // current displayed point so the car does not jump on a refetched route.
+        if !Self.pointsEqual(seededRoutePoints[markerId], route.points) {
+            seededRoutePoints[markerId] = route.points
+            motion.setRoute(id: markerId, route: route.points)
+        }
+    }
+
+    /// Writes the trimmed remaining route back onto the followed polyline so it visibly shrinks
+    /// behind the car as it advances.
+    private func applyRemainingRoute(markerId: String, points: [GeoPoint]) {
+        guard let routeId = followedRouteByMarker[markerId],
+              let line = renderedRoutes[routeId] else { return }
+        let path = GMSMutablePath()
+        for p in points { path.add(CLLocationCoordinate2D(latitude: p.lat, longitude: p.lng)) }
+        line.path = path
+    }
+
+    /// Draws (or tears down) the honesty connector — a short straight line from the raw GPS fix to
+    /// the snapped point the car is drawn at — handed verbatim by the motion model. A nil connector
+    /// means the fix is on the line, off-route (chord fallback), or route mode is off, so the line
+    /// is removed. The renderer never computes the connector; it only draws what the model emits.
+    private func applyConnector(markerId: String, connector: RouteConnector?) {
+        guard let map = mapView else { return }
+        guard let connector = connector else {
+            connectorLines.removeValue(forKey: markerId)?.map = nil
+            return
+        }
+        let path = GMSMutablePath()
+        path.add(CLLocationCoordinate2D(latitude: connector.rawPoint.lat, longitude: connector.rawPoint.lng))
+        path.add(CLLocationCoordinate2D(latitude: connector.snappedPoint.lat, longitude: connector.snappedPoint.lng))
+        if let line = connectorLines[markerId] {
+            line.path = path
+        } else {
+            let line = GMSPolyline(path: path)
+            line.strokeColor = UIColor(argb: MapConnectorStyle.colorArgb)
+            line.strokeWidth = CGFloat(MapConnectorStyle.widthDp)
+            line.zIndex = MapConnectorStyle.zIndex
+            line.map = map
+            connectorLines[markerId] = line
         }
     }
 
@@ -361,6 +448,20 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
                 renderedRoutes[id] = line
             }
             routeData[id] = route
+        }
+        reseedFollowedRoutes()
+    }
+
+    /// Re-seeds the motion model for any flat marker whose followed route geometry changed since
+    /// it was last seeded — so a route refetch that arrives without a marker update still trims
+    /// the right polyline (setRoute re-projects, so the car does not jump).
+    private func reseedFollowedRoutes() {
+        for (markerId, routeId) in followedRouteByMarker {
+            guard let points = routeData[routeId]?.points else { continue }
+            if !Self.pointsEqual(seededRoutePoints[markerId], points) {
+                seededRoutePoints[markerId] = points
+                motion.setRoute(id: markerId, route: points)
+            }
         }
     }
 
