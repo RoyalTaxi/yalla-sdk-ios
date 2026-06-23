@@ -15,7 +15,6 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     private var pendingPadding = UIEdgeInsets.zero
     private var lastEmittedCenter: CLLocationCoordinate2D?
     private var warnedCirclesUnsupported = false
-    private var warnedRotationUnsupported = false
     private var interactionEnabled = true
     private var pendingUserLocation: GeoPoint?
     private var userLocationAnnotation: MLNPointAnnotation?
@@ -30,11 +29,36 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     private var routeData: [String: MapRoute] = [:]
     private var routeSources: [String: MLNShapeSource] = [:]
     private var routeLayers: [String: MLNLineStyleLayer] = [:]
+    // Flat ("car") markers that declared `followsRouteId`, mapped to that route id so the trimmed
+    // route from the motion model can be written back to the right line layer as the car eats it.
+    private var followedRouteByMarker: [String: String] = [:]
+    private var seededRoutePoints: [String: [GeoPoint]] = [:]
+    // Honesty-connector line layers (raw GPS -> snapped car) per flat marker, added only while the
+    // model emits a connector for that marker and removed when it goes nil.
+    private var connectorSources: [String: MLNShapeSource] = [:]
+    private var connectorLayers: [String: MLNLineStyleLayer] = [:]
+    // Live custom annotation views for flat car markers, keyed by marker id, so their rotation can
+    // be re-compensated when the map camera rotates.
+    private var carAnnotationViews: [String: LibreCarAnnotationView] = [:]
+    private var lastMarkerViewBearing: CLLocationDirection?
     private var userInitiatedMove = false
-    private lazy var motion = MarkerMotionDriver { [weak self] poses in self?.applyAnnotationPoses(poses) }
 
-    public init(styleURL: String) {
+    /// Feature flag — chord interpolation is the production default. Flip this to `true` *before the
+    /// map is created* (i.e. before ``createViewController()``) to opt this renderer into
+    /// route-following; with it off, `followsRouteId` markers stay pure chord interpolators and the
+    /// motion model's `setRoute` is a no-op. Platform flips are done interactively on-device, not in
+    /// the SDK (see yalla-sdk ADR 0003).
+    public let routeFollowingEnabled: Bool
+    private lazy var motion = MarkerMotionDriver(
+        routeFollowingEnabled: routeFollowingEnabled,
+        onFrame: { [weak self] poses in self?.applyAnnotationPoses(poses) },
+        onRoute: { [weak self] markerId, points in self?.applyRemainingRoute(markerId: markerId, points: points) },
+        onConnector: { [weak self] markerId, connector in self?.applyConnector(markerId: markerId, connector: connector) }
+    )
+
+    public init(styleURL: String, routeFollowingEnabled: Bool = false) {
         self.styleURL = styleURL
+        self.routeFollowingEnabled = routeFollowingEnabled
         super.init()
     }
 
@@ -193,6 +217,8 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             self.style = nil
             self.routeSources.removeAll()
             self.routeLayers.removeAll()
+            self.connectorSources.removeAll()
+            self.connectorLayers.removeAll()
             self.routeData.removeAll()
             if let annotations = mv.annotations { mv.removeAnnotations(annotations) }
             self.renderedAnnotations.removeAll()
@@ -200,6 +226,10 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             self.markerImages.removeAll()
             self.sharedIconKeys.removeAll()
             self.sharedIconReuseIds.removeAll()
+            self.followedRouteByMarker.removeAll()
+            self.seededRoutePoints.removeAll()
+            self.carAnnotationViews.removeAll()
+            self.lastMarkerViewBearing = nil
             self.userLocationAnnotation = nil
             self.userLocationSource = nil
             self.userLocationLayer = nil
@@ -270,9 +300,13 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         if let style = style {
             routeLayers.values.forEach { style.removeLayer($0) }
             routeSources.values.forEach { style.removeSource($0) }
+            connectorLayers.values.forEach { style.removeLayer($0) }
+            connectorSources.values.forEach { style.removeSource($0) }
             if let layer = userLocationLayer { style.removeLayer(layer) }
             if let source = userLocationSource { style.removeSource(source) }
         }
+        connectorLayers.removeAll()
+        connectorSources.removeAll()
         userLocationAnnotation = nil
         userLocationLayer = nil
         userLocationSource = nil
@@ -282,6 +316,10 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         markerImages.removeAll()
         sharedIconKeys.removeAll()
         sharedIconReuseIds.removeAll()
+        followedRouteByMarker.removeAll()
+        seededRoutePoints.removeAll()
+        carAnnotationViews.removeAll()
+        lastMarkerViewBearing = nil
         markerData.removeAll()
         routeData.removeAll()
         mapView?.delegate = nil
@@ -318,6 +356,12 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             markerData.removeValue(forKey: id)
             markerImages.removeValue(forKey: id)
             sharedIconKeys.removeValue(forKey: id)
+            carAnnotationViews.removeValue(forKey: id)
+            removeConnector(markerId: id)
+            if followedRouteByMarker.removeValue(forKey: id) != nil {
+                seededRoutePoints.removeValue(forKey: id)
+                motion.setRoute(id: id, route: nil)
+            }
         }
         for (id, marker) in incoming {
             let previous = markerData[id]
@@ -332,15 +376,24 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
                 sharedIconKeys[id] = key
             }
             if let existing = renderedAnnotations[id] {
-                if previous?.point != marker.point {
+                let moved = previous?.point != marker.point
+                let motionChanged = moved || previous?.routeHeading != marker.routeHeading || previous?.rotation != marker.rotation
+                if motionChanged {
                     if marker.flat {
                         motion.push(id: id, point: marker.point, routeHeading: marker.routeHeading?.floatValue, serverHeading: marker.rotation)
-                    } else {
+                    } else if moved {
                         existing.coordinate = CLLocationCoordinate2D(latitude: marker.point.lat, longitude: marker.point.lng)
                     }
                 }
                 if previous?.contentDescription != marker.contentDescription {
                     existing.subtitle = marker.contentDescription
+                }
+                // A flat car keeps its live custom view across updates, so refresh its image in
+                // place when the icon changes (the view is not rebuilt by viewFor: otherwise).
+                if marker.flat, previous?.icon != marker.icon,
+                   let carView = carAnnotationViews[id],
+                   let key = sharedIconKeys[id], let image = markerImages[key] {
+                    carView.setImage(image)
                 }
             } else {
                 let ann = MLNPointAnnotation()
@@ -351,6 +404,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
                 renderedAnnotations[id] = ann
                 if marker.flat { motion.push(id: id, point: marker.point, routeHeading: marker.routeHeading?.floatValue, serverHeading: marker.rotation) }
             }
+            if marker.flat { applyFollowedRoute(markerId: id, marker: marker) }
             markerData[id] = marker
         }
         motion.retain(ids: Set(incoming.values.filter { $0.flat }.map { $0.id }))
@@ -358,13 +412,95 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     }
 
     private func applyAnnotationPoses(_ poses: [String: Pose]) {
-        if !poses.isEmpty && !warnedRotationUnsupported {
-            warnedRotationUnsupported = true
-            NSLog("[YallaMaps] MapLibre-iOS MLNPointAnnotation cannot rotate; car markers glide position-only and drop Pose.bearing until the MLNSymbolStyleLayer rewrite (YLL-798 P1-3).")
-        }
+        let cameraBearing = mapView?.camera.heading ?? 0
         for (id, pose) in poses {
             renderedAnnotations[id]?.coordinate = CLLocationCoordinate2D(latitude: pose.point.lat, longitude: pose.point.lng)
+            // Flat (car) markers carry a custom rotatable view; static pins ignore heading.
+            if let carView = carAnnotationViews[id] {
+                carView.setWorldHeading(CLLocationDirection(pose.bearing))
+                carView.applyRotation(cameraBearing: cameraBearing)
+            }
         }
+    }
+
+    /// Re-compensates every live car view's rotation for the current map bearing, so each car
+    /// keeps pointing along its world heading as the map rotates. Mirrors the colleagues'
+    /// `refreshAllMarkerViewRotations`; gated on a bearing-change epsilon to avoid churn.
+    private func refreshCarViewRotations() {
+        guard let bearing = mapView?.camera.heading else { return }
+        if let last = lastMarkerViewBearing, abs(bearing - last) <= 0.0001 { return }
+        lastMarkerViewBearing = bearing
+        for carView in carAnnotationViews.values {
+            carView.applyRotation(cameraBearing: bearing)
+        }
+    }
+
+    /// Glues a flat car marker to the route it declared via `followsRouteId`, or detaches it when
+    /// the declaration (or geometry) is gone/changed. Points come from the matching `MapRoute`.
+    private func applyFollowedRoute(markerId: String, marker: MapMarker) {
+        guard let routeId = marker.followsRouteId,
+              let route = routeData[routeId] ?? pendingRoutes.first(where: { $0.id == routeId }) else {
+            if followedRouteByMarker.removeValue(forKey: markerId) != nil {
+                seededRoutePoints.removeValue(forKey: markerId)
+                motion.setRoute(id: markerId, route: nil)
+            }
+            return
+        }
+        followedRouteByMarker[markerId] = routeId
+        if !Self.pointsEqual(seededRoutePoints[markerId], route.points) {
+            seededRoutePoints[markerId] = route.points
+            motion.setRoute(id: markerId, route: route.points)
+        }
+    }
+
+    /// Writes the trimmed remaining route back onto the followed line layer so it visibly shrinks
+    /// behind the car as it advances.
+    private func applyRemainingRoute(markerId: String, points: [GeoPoint]) {
+        guard let routeId = followedRouteByMarker[markerId],
+              let source = routeSources[routeId] else { return }
+        if points.count < 2 {
+            // Arrived (or degenerate): collapse the line to nothing rather than leaving a stub.
+            source.shape = nil
+            return
+        }
+        var coords = points.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng) }
+        source.shape = MLNPolylineFeature(coordinates: &coords, count: UInt(coords.count))
+    }
+
+    /// Draws (or tears down) the honesty connector — a short line from the driver's raw GPS fix to
+    /// the snapped point the car is rendered at — handed verbatim by the motion model. A nil
+    /// connector (on the line / off-route chord fallback / route mode off) removes the line. The
+    /// renderer never computes the connector; it only draws what the model emits.
+    private func applyConnector(markerId: String, connector: RouteConnector?) {
+        guard let style = style else { return }
+        guard let connector = connector else {
+            removeConnector(markerId: markerId)
+            return
+        }
+        var coords = [
+            CLLocationCoordinate2D(latitude: connector.rawPoint.lat, longitude: connector.rawPoint.lng),
+            CLLocationCoordinate2D(latitude: connector.snappedPoint.lat, longitude: connector.snappedPoint.lng)
+        ]
+        let feature = MLNPolylineFeature(coordinates: &coords, count: UInt(coords.count))
+        if let source = connectorSources[markerId] {
+            source.shape = feature
+        } else {
+            let source = MLNShapeSource(identifier: "yalla-connector-src-\(markerId)", shape: feature, options: nil)
+            style.addSource(source)
+            let layer = MLNLineStyleLayer(identifier: "yalla-connector-lyr-\(markerId)", source: source)
+            layer.lineCap = NSExpression(forConstantValue: "round")
+            layer.lineColor = NSExpression(forConstantValue: UIColor(argb: MapConnectorStyle.colorArgb))
+            layer.lineWidth = NSExpression(forConstantValue: MapConnectorStyle.widthDp)
+            layer.lineDashPattern = NSExpression(forConstantValue: MapConnectorStyle.dashLengthsPt)
+            style.addLayer(layer)
+            connectorSources[markerId] = source
+            connectorLayers[markerId] = layer
+        }
+    }
+
+    private func removeConnector(markerId: String) {
+        if let layer = connectorLayers.removeValue(forKey: markerId) { style?.removeLayer(layer) }
+        if let source = connectorSources.removeValue(forKey: markerId) { style?.removeSource(source) }
     }
 
     private static func pointsEqual(_ a: [GeoPoint]?, _ b: [GeoPoint]) -> Bool {
@@ -422,6 +558,20 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
                 routeLayers[id] = layer
             }
             routeData[id] = route
+        }
+        reseedFollowedRoutes()
+    }
+
+    /// Re-seeds the motion model for any flat marker whose followed route geometry changed since
+    /// it was last seeded, so a route refetch arriving without a marker update still trims the
+    /// right line layer (setRoute re-projects, so the car does not jump).
+    private func reseedFollowedRoutes() {
+        for (markerId, routeId) in followedRouteByMarker {
+            guard let points = routeData[routeId]?.points else { continue }
+            if !Self.pointsEqual(seededRoutePoints[markerId], points) {
+                seededRoutePoints[markerId] = points
+                motion.setRoute(id: markerId, route: points)
+            }
         }
     }
 
@@ -491,6 +641,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     }
 
     public func mapView(_ mapView: MLNMapView, regionIsChangingWith reason: MLNCameraChangeReason) {
+        refreshCarViewRotations()
         let center = mapView.centerCoordinate
         if let prev = lastEmittedCenter, centerEpsilonEqual(prev, center) { return }
         lastEmittedCenter = center
@@ -505,6 +656,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     }
 
     public func mapView(_ mapView: MLNMapView, regionDidChangeWith reason: MLNCameraChangeReason, animated: Bool) {
+        refreshCarViewRotations()
         let center = mapView.centerCoordinate
         lastEmittedCenter = center
         let geo = GeoPoint(lat: center.latitude, lng: center.longitude)
@@ -524,9 +676,35 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             return MLNAnnotationImage(image: MapIconLoader.userLocationDotImage, reuseIdentifier: "yalla-user-location-dot")
         }
         guard let id = annotation.title.flatMap({ $0 }) else { return nil }
+        // Flat (car) markers are rendered through a rotatable custom view (see viewFor:); only the
+        // static, upright pins go through the image path.
+        if markerData[id]?.flat == true { return nil }
         guard let sharedKey = sharedIconKeys[id], let image = markerImages[sharedKey] else { return nil }
         if let cached = mapView.dequeueReusableAnnotationImage(withIdentifier: sharedKey) { return cached }
         return MLNAnnotationImage(image: image, reuseIdentifier: sharedKey)
+    }
+
+    /// Returns a rotatable custom view ONLY for flat (car) markers; everything else returns nil so
+    /// MapLibre falls back to the upright `imageFor:` path. The view hosts the marker's image
+    /// centered so rotation pivots about the car's middle, and is seeded with the current pose /
+    /// camera bearing so it appears already oriented on first display.
+    public func mapView(_ mapView: MLNMapView, viewFor annotation: MLNAnnotation) -> MLNAnnotationView? {
+        if let pointAnnotation = annotation as? MLNPointAnnotation, pointAnnotation === userLocationAnnotation {
+            return nil
+        }
+        guard let id = annotation.title.flatMap({ $0 }), markerData[id]?.flat == true else { return nil }
+        guard let sharedKey = sharedIconKeys[id], let image = markerImages[sharedKey] else { return nil }
+        let reuseId = "yalla-car-\(sharedKey)"
+        let view = (mapView.dequeueReusableAnnotationView(withIdentifier: reuseId) as? LibreCarAnnotationView)
+            ?? LibreCarAnnotationView(annotation: annotation, reuseIdentifier: reuseId)
+        view.setImage(image)
+        carAnnotationViews[id] = view
+        // Seed orientation from the current marker heading and camera so the car is not briefly
+        // upright before the next motion frame.
+        let heading = CLLocationDirection(markerData[id]?.rotation ?? 0)
+        view.setWorldHeading(heading)
+        view.applyRotation(cameraBearing: mapView.camera.heading)
+        return view
     }
 
     private func sharedIconKey(for icon: MapMarkerIcon) -> String {

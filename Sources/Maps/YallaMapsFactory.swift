@@ -13,11 +13,11 @@ public final class YallaMapsFactory: NSObject, IosMapRendererFactory {
     }
 
     public func createGoogleRenderer() -> any IosMapRenderer {
-        GoogleMapRenderer()
+        GoogleMapRenderer(routeFollowingEnabled: true)
     }
 
     public func createLibreRenderer() -> any IosMapRenderer {
-        LibreMapRenderer(styleURL: libreStyleURL)
+        LibreMapRenderer(styleURL: libreStyleURL, routeFollowingEnabled: true)
     }
 
     private static let lock = NSLock()
