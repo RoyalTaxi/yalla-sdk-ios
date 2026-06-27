@@ -11,7 +11,7 @@ final class MarkerMotionDriverLifecycleTests: XCTestCase {
 
     func testDriverEmitsWhileRunning() {
         var frames = 0
-        let driver = MarkerMotionDriver { _ in frames += 1 }
+        let driver = MarkerMotionDriver(mode: MotionMode.ChordOnly.shared, onFrame: { _ in frames += 1 })
         driver.push(id: "car-1", point: GeoPoint(lat: 41.30, lng: 69.20), routeHeading: nil, serverHeading: 0)
         driver.push(id: "car-1", point: GeoPoint(lat: 41.40, lng: 69.30), routeHeading: nil, serverHeading: 0)
         driver.retain(ids: ["car-1"])
@@ -22,7 +22,7 @@ final class MarkerMotionDriverLifecycleTests: XCTestCase {
 
     func testClearedDriverDoesNotResurrectWithoutFreshPush() {
         var frames = 0
-        let driver = MarkerMotionDriver { _ in frames += 1 }
+        let driver = MarkerMotionDriver(mode: MotionMode.ChordOnly.shared, onFrame: { _ in frames += 1 })
         driver.push(id: "car-1", point: GeoPoint(lat: 41.30, lng: 69.20), routeHeading: nil, serverHeading: 0)
         driver.push(id: "car-1", point: GeoPoint(lat: 41.40, lng: 69.30), routeHeading: nil, serverHeading: 0)
         driver.retain(ids: ["car-1"])
@@ -37,7 +37,7 @@ final class MarkerMotionDriverLifecycleTests: XCTestCase {
 
     func testReusedDriverRunsAgainAfterPush() {
         var frames = 0
-        let driver = MarkerMotionDriver { _ in frames += 1 }
+        let driver = MarkerMotionDriver(mode: MotionMode.ChordOnly.shared, onFrame: { _ in frames += 1 })
         driver.push(id: "car-1", point: GeoPoint(lat: 41.30, lng: 69.20), routeHeading: nil, serverHeading: 0)
         driver.retain(ids: ["car-1"])
         driver.clear()

@@ -9,11 +9,12 @@ final class MarkerMotionDriver: NSObject {
     private let onRoute: ((String, [GeoPoint]) -> Void)?
     private let onConnector: ((String, RouteConnector?) -> Void)?
 
-    /// Feature flag — chord interpolation is the production default. While `false` every model is a
-    /// pure chord interpolator and ``setRoute(id:route:)`` is a no-op (the underlying
-    /// `DriverMotionModel` also enforces this: with `routeFollowingEnabled = false`, `setRoute` is a
-    /// no-op). Flip this on-device at the renderer call site to opt a build into route-following;
-    /// platform flips are done interactively, not wired here (see SDK ADR 0003).
+    /// Derived from the required ``MotionMode`` passed at init. While `false` every model is a pure
+    /// chord interpolator and ``setRoute(id:route:)`` is a no-op (the underlying `DriverMotionModel`
+    /// also enforces this: with `routeFollowingEnabled = false`, `setRoute` is a no-op). The mode is
+    /// a required init parameter — the renderer call site must choose ``MotionMode/RouteFollowing`` to
+    /// opt a build into route-following. Making it required (no default) is what pins the production
+    /// opt-in at the type level; it regressed to OFF twice when it was a defaulted boolean.
     private let routeFollowingEnabled: Bool
 
     private var lastEmitted: [String: Pose] = [:]
@@ -23,9 +24,9 @@ final class MarkerMotionDriver: NSObject {
     private var cleared = false
 
     /// - Parameters:
-    ///   - routeFollowingEnabled: feature flag; `false` (default) keeps every model a chord
-    ///     interpolator and makes ``setRoute(id:route:)`` a no-op. The chord path is the production
-    ///     default; a platform opts in on-device.
+    ///   - mode: required motion mode. ``MotionMode/RouteFollowing`` opts every model into
+    ///     route-eating; ``MotionMode/ChordOnly`` keeps every model a chord interpolator and makes
+    ///     ``setRoute(id:route:)`` a no-op. There is no default — the call site must choose.
     ///   - onFrame: per-tick pose updates for moving markers.
     ///   - onRoute: per-tick *remaining* route for markers that are following a route (set via
     ///     ``setRoute(id:route:)``). Throttled the same way Android trims its eaten polyline —
@@ -37,12 +38,12 @@ final class MarkerMotionDriver: NSObject {
     ///     when it meaningfully changes (endpoint moved past ``routeHeadEpsilonMeters`` or the
     ///     visible/hidden state flipped).
     init(
-        routeFollowingEnabled: Bool = false,
+        mode: MotionMode,
         onFrame: @escaping ([String: Pose]) -> Void,
         onRoute: ((String, [GeoPoint]) -> Void)? = nil,
         onConnector: ((String, RouteConnector?) -> Void)? = nil
     ) {
-        self.routeFollowingEnabled = routeFollowingEnabled
+        self.routeFollowingEnabled = mode is MotionMode.RouteFollowing
         self.onFrame = onFrame
         self.onRoute = onRoute
         self.onConnector = onConnector
