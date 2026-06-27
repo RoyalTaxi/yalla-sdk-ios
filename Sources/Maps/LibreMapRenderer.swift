@@ -15,7 +15,6 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     private var pendingRoutes: [MapRoute] = []
     private var pendingPadding = UIEdgeInsets.zero
     private var lastEmittedCenter: CLLocationCoordinate2D?
-    private var warnedCirclesUnsupported = false
     private var interactionEnabled = true
     private var pendingUserLocation: GeoPoint?
     private var userLocationAnnotation: MLNPointAnnotation?
@@ -30,6 +29,10 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     private var routeData: [String: MapRoute] = [:]
     private var routeSources: [String: MLNShapeSource] = [:]
     private var routeLayers: [String: MLNLineStyleLayer] = [:]
+    private var pendingCircles: [MapCircle] = []
+    private var circleData: [String: MapCircle] = [:]
+    private var circleSources: [String: MLNShapeSource] = [:]
+    private var circleLayers: [String: MLNCircleStyleLayer] = [:]
     // Flat ("car") markers that declared `followsRouteId`, mapped to that route id so the trimmed
     // route from the motion model can be written back to the right line layer as the car eats it.
     private var followedRouteByMarker: [String: String] = [:]
@@ -125,7 +128,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     }
 
     public func moveTo(target: GeoPoint, zoom: Float) {
-        runOnMain {
+        MapUtil.runOnMain {
             self.mapView?.setCenter(
                 CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng),
                 zoomLevel: Double(self.clampZoom(zoom)),
@@ -135,14 +138,14 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     }
 
     public func animateTo(target: GeoPoint, zoom: Float, durationMs: Int32) {
-        runOnMain {
+        MapUtil.runOnMain {
             guard let mv = self.mapView else { return }
             self.animateCamera(to: target, zoom: zoom, heading: mv.camera.heading, durationMs: durationMs)
         }
     }
 
     public func animateToWithBearing(target: GeoPoint, bearing: Float, zoom: Float, durationMs: Int32) {
-        runOnMain {
+        MapUtil.runOnMain {
             self.animateCamera(to: target, zoom: zoom, heading: CLLocationDirection(bearing), durationMs: durationMs)
         }
     }
@@ -159,7 +162,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         guard !valid.isEmpty else { return }
         if valid.count == 1 {
             let single = valid[0]
-            runOnMain {
+            MapUtil.runOnMain {
                 let zoom = Double(self.clampZoom(Float(self.mapView?.zoomLevel ?? 15)))
                 self.mapView?.setCenter(
                     CLLocationCoordinate2D(latitude: single.lat, longitude: single.lng),
@@ -169,7 +172,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             }
             return
         }
-        runOnMain {
+        MapUtil.runOnMain {
             guard let mv = self.mapView else { return }
             var coords = valid.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng) }
             let baseMargin: CGFloat = 24
@@ -192,63 +195,99 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     }
 
     public func zoomIn() {
-        runOnMain {
+        MapUtil.runOnMain {
             guard let mv = self.mapView else { return }
             mv.setZoomLevel(Double(self.clampZoom(Float(mv.zoomLevel + 1))), animated: true)
         }
     }
 
     public func zoomOut() {
-        runOnMain {
+        MapUtil.runOnMain {
             guard let mv = self.mapView else { return }
             mv.setZoomLevel(Double(self.clampZoom(Float(mv.zoomLevel - 1))), animated: true)
         }
     }
 
     public func setZoom(zoom: Float) {
-        runOnMain { self.mapView?.setZoomLevel(Double(self.clampZoom(zoom)), animated: true) }
+        MapUtil.runOnMain { self.mapView?.setZoomLevel(Double(self.clampZoom(zoom)), animated: true) }
     }
 
     public func setStyleUrl(url: String) {
-        runOnMain {
+        MapUtil.runOnMain {
             guard let parsed = URL(string: url) else { return }
             guard let mv = self.mapView else { return }
             if mv.styleURL == parsed { return }
-            self.motion.clear()
-            self.style = nil
-            self.routeSources.removeAll()
-            self.routeLayers.removeAll()
-            self.connectorSources.removeAll()
-            self.connectorLayers.removeAll()
-            self.routeData.removeAll()
-            if let annotations = mv.annotations { mv.removeAnnotations(annotations) }
-            self.renderedAnnotations.removeAll()
-            self.markerData.removeAll()
-            self.markerImages.removeAll()
-            self.sharedIconKeys.removeAll()
-            self.sharedIconReuseIds.removeAll()
-            self.followedRouteByMarker.removeAll()
-            self.seededRoutePoints.removeAll()
-            self.carAnnotationViews.removeAll()
-            self.lastMarkerViewBearing = nil
-            self.userLocationAnnotation = nil
-            self.userLocationSource = nil
-            self.userLocationLayer = nil
+            self.tearDownStyleState(mv)
             mv.styleURL = parsed
         }
     }
 
+    /// Applies an inline MapLibre GL style (`MapStyle.InlineJson`). MapLibre iOS loads styles only
+    /// from a `styleURL`, so the JSON is written to a temporary file and that file URL is applied
+    /// through the same teardown/reload path as ``setStyleUrl(url:)``. On a write failure the call
+    /// is a no-op (the current style stays), never a silent crash.
     public func setStyleJson(json: String) {
+        MapUtil.runOnMain {
+            guard let mv = self.mapView else { return }
+            guard let fileURL = self.writeStyleJsonToTempFile(json) else {
+                NSLog("[YallaMaps] LibreMapRenderer.setStyleJson: failed to write style JSON to a temp file; keeping current style.")
+                return
+            }
+            if mv.styleURL == fileURL { return }
+            self.tearDownStyleState(mv)
+            mv.styleURL = fileURL
+        }
+    }
+
+    /// Tears down all style-scoped render state before a style swap. Replacing the style drops every
+    /// source/layer MapLibre holds, so the renderer must clear its own bookkeeping (and detach
+    /// annotations) to rebuild cleanly in `didFinishLoading`. Extracted so the URL and inline-JSON
+    /// style paths stay identical.
+    private func tearDownStyleState(_ mv: MLNMapView) {
+        motion.clear()
+        style = nil
+        routeSources.removeAll()
+        routeLayers.removeAll()
+        connectorSources.removeAll()
+        connectorLayers.removeAll()
+        routeData.removeAll()
+        circleSources.removeAll()
+        circleLayers.removeAll()
+        circleData.removeAll()
+        if let annotations = mv.annotations { mv.removeAnnotations(annotations) }
+        renderedAnnotations.removeAll()
+        markerData.removeAll()
+        markerImages.removeAll()
+        sharedIconKeys.removeAll()
+        sharedIconReuseIds.removeAll()
+        followedRouteByMarker.removeAll()
+        seededRoutePoints.removeAll()
+        carAnnotationViews.removeAll()
+        lastMarkerViewBearing = nil
+        userLocationAnnotation = nil
+        userLocationSource = nil
+        userLocationLayer = nil
+    }
+
+    /// Writes an inline style JSON string to a stable temp file (one per renderer, overwritten on
+    /// each call) and returns its file URL, or `nil` on failure. A stable path means repeated
+    /// identical inline styles resolve to the same URL, so the `styleURL == fileURL` guard can skip
+    /// a redundant reload.
+    private func writeStyleJsonToTempFile(_ json: String) -> URL? {
+        let dir = FileManager.default.temporaryDirectory
+        let fileURL = dir.appendingPathComponent("yalla-libre-inline-style-\(ObjectIdentifier(self).hashValue).json")
+        do {
+            try json.write(to: fileURL, atomically: true, encoding: .utf8)
+            return fileURL
+        } catch {
+            return nil
+        }
     }
 
     public func setColorScheme(isDark: Bool) {
     }
 
-    private func runOnMain(_ block: @escaping () -> Void) {
-        if Thread.isMainThread { block() } else { DispatchQueue.main.async(execute: block) }
-    }
-
-    public func setPaddingPt(leftPt: Float, topPt: Float, rightPt: Float, bottomPt: Float) {
+    public func setPaddingPoints(leftPt: Float, topPt: Float, rightPt: Float, bottomPt: Float) {
         dispatchPrecondition(condition: .onQueue(.main))
         pendingPadding = UIEdgeInsets(
             top: CGFloat(topPt),
@@ -260,7 +299,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     }
 
     public func setInteractionEnabled(enabled: Bool) {
-        runOnMain {
+        MapUtil.runOnMain {
             self.interactionEnabled = enabled
             self.applyInteractionEnabled()
         }
@@ -291,10 +330,8 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
 
     public func setCircles(circles: [MapCircle]) {
         dispatchPrecondition(condition: .onQueue(.main))
-        if !circles.isEmpty && !warnedCirclesUnsupported {
-            warnedCirclesUnsupported = true
-            NSLog("[YallaMaps] MapLibre does not support geographic circles; setCircles is a no-op.")
-        }
+        pendingCircles = circles
+        if style != nil { renderCircles(circles: circles) }
     }
 
     public func setUserLocation(point: GeoPoint?) {
@@ -466,7 +503,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             return
         }
         followedRouteByMarker[markerId] = routeId
-        if !Self.pointsEqual(seededRoutePoints[markerId], route.points) {
+        if !MapUtil.pointsEqual(seededRoutePoints[markerId], route.points) {
             seededRoutePoints[markerId] = route.points
             motion.setRoute(id: markerId, route: route.points)
         }
@@ -522,14 +559,6 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         if let source = connectorSources.removeValue(forKey: markerId) { style?.removeSource(source) }
     }
 
-    private static func pointsEqual(_ a: [GeoPoint]?, _ b: [GeoPoint]) -> Bool {
-        guard let a = a, a.count == b.count else { return false }
-        for i in 0..<a.count {
-            if abs(a[i].lat - b[i].lat) > 1e-7 || abs(a[i].lng - b[i].lng) > 1e-7 { return false }
-        }
-        return true
-    }
-
     private func renderRoutes(routes: [MapRoute]) {
         guard let style = style else { return }
         let incoming = Dictionary(uniqueKeysWithValues: routes.map { ($0.id, $0) })
@@ -542,7 +571,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         }
         for (id, route) in incoming {
             let previous = routeData[id]
-            let pointsChanged = !Self.pointsEqual(previous?.points, route.points)
+            let pointsChanged = !MapUtil.pointsEqual(previous?.points, route.points)
             if let source = routeSources[id] {
                 if pointsChanged {
                     var coords = route.points.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng) }
@@ -587,11 +616,85 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     private func reseedFollowedRoutes() {
         for (markerId, routeId) in followedRouteByMarker {
             guard let points = routeData[routeId]?.points else { continue }
-            if !Self.pointsEqual(seededRoutePoints[markerId], points) {
+            if !MapUtil.pointsEqual(seededRoutePoints[markerId], points) {
                 seededRoutePoints[markerId] = points
                 motion.setRoute(id: markerId, route: points)
             }
         }
+    }
+
+    /// Renders geographic [MapCircle]s as MapLibre circle layers, mirroring the Android Libre
+    /// controller. Each circle is a one-point `MLNShapeSource` plus an `MLNCircleStyleLayer` whose
+    /// `circleRadius` is a zoom-interpolated pixel radius derived from the metres radius (MapLibre
+    /// circles are sized in screen points, not metres). Circle layers are inserted below the first
+    /// symbol layer so labels/markers stay on top, matching the route layering.
+    private func renderCircles(circles: [MapCircle]) {
+        guard let style = style else { return }
+        let incoming = Dictionary(uniqueKeysWithValues: circles.map { ($0.id, $0) })
+        let stale = Set(circleData.keys).subtracting(incoming.keys)
+        for id in stale {
+            if let layer = circleLayers.removeValue(forKey: id) { style.removeLayer(layer) }
+            if let source = circleSources.removeValue(forKey: id) { style.removeSource(source) }
+            circleData.removeValue(forKey: id)
+        }
+        for (id, circle) in incoming {
+            let previous = circleData[id]
+            let feature = MLNPointFeature()
+            feature.coordinate = CLLocationCoordinate2D(latitude: circle.center.lat, longitude: circle.center.lng)
+            if let source = circleSources[id], let layer = circleLayers[id] {
+                if previous?.center != circle.center {
+                    source.shape = feature
+                }
+                if previous?.center != circle.center || previous?.radiusMeters != circle.radiusMeters {
+                    layer.circleRadius = Self.circleRadiusExpression(radiusMeters: circle.radiusMeters, lat: circle.center.lat)
+                }
+                if previous?.fillColorArgb != circle.fillColorArgb {
+                    layer.circleColor = NSExpression(forConstantValue: UIColor(argb: circle.fillColorArgb))
+                }
+                if previous?.strokeColorArgb != circle.strokeColorArgb {
+                    layer.circleStrokeColor = NSExpression(forConstantValue: UIColor(argb: circle.strokeColorArgb))
+                }
+                if previous?.strokeWidthDp != circle.strokeWidthDp {
+                    layer.circleStrokeWidth = NSExpression(forConstantValue: circle.strokeWidthDp)
+                }
+            } else {
+                let sourceId = "yalla-circle-src-\(id)"
+                let layerId = "yalla-circle-lyr-\(id)"
+                let source = MLNShapeSource(identifier: sourceId, shape: feature, options: nil)
+                style.addSource(source)
+                let layer = MLNCircleStyleLayer(identifier: layerId, source: source)
+                layer.circleRadius = Self.circleRadiusExpression(radiusMeters: circle.radiusMeters, lat: circle.center.lat)
+                layer.circleColor = NSExpression(forConstantValue: UIColor(argb: circle.fillColorArgb))
+                layer.circleStrokeColor = NSExpression(forConstantValue: UIColor(argb: circle.strokeColorArgb))
+                layer.circleStrokeWidth = NSExpression(forConstantValue: circle.strokeWidthDp)
+                if let firstSymbol = style.layers.first(where: { $0 is MLNSymbolStyleLayer }) {
+                    style.insertLayer(layer, below: firstSymbol)
+                } else {
+                    style.addLayer(layer)
+                }
+                circleSources[id] = source
+                circleLayers[id] = layer
+            }
+            circleData[id] = circle
+        }
+    }
+
+    /// Builds the MapLibre `circleRadius` expression for a metres-based circle: an exponential
+    /// (base-2) interpolation over zoom from the zoom-0 pixel radius up to zoom 22, where the radius
+    /// reaches `circleRadiusMaxZoomScale` x the zoom-0 value. Mirrors the Android Libre controller's
+    /// `circleRadiusExpression` so circles scale with zoom identically across platforms.
+    private static func circleRadiusExpression(radiusMeters: Double, lat: Double) -> NSExpression {
+        let radiusAtZoomZero = MapUtil.circleRadiusPixelsAtZoomZero(radiusMeters: radiusMeters, lat: lat)
+        let stops = NSExpression(forConstantValue: [
+            0: radiusAtZoomZero,
+            22: radiusAtZoomZero * MapUtil.circleRadiusMaxZoomScale
+        ])
+        return NSExpression(
+            forMLNInterpolating: NSExpression.zoomLevelVariable,
+            curveType: .exponential,
+            parameters: NSExpression(forConstantValue: 2),
+            stops: stops
+        )
     }
 
     private func renderUserLocation() {
@@ -646,6 +749,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         self.style = style
         renderMarkers(markers: pendingMarkers)
         renderRoutes(routes: pendingRoutes)
+        renderCircles(circles: pendingCircles)
         renderUserLocation()
         listener?.onReady()
     }

@@ -85,7 +85,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
     }
 
     public func moveTo(target: GeoPoint, zoom: Float) {
-        runOnMain {
+        MapUtil.runOnMain {
             let current = self.mapView?.camera
             let cam = GMSCameraPosition(
                 target: CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng),
@@ -98,7 +98,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
     }
 
     public func animateTo(target: GeoPoint, zoom: Float, durationMs: Int32) {
-        runOnMain {
+        MapUtil.runOnMain {
             let current = self.mapView?.camera
             let cam = GMSCameraPosition(
                 target: CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng),
@@ -111,7 +111,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
     }
 
     public func animateToWithBearing(target: GeoPoint, bearing: Float, zoom: Float, durationMs: Int32) {
-        runOnMain {
+        MapUtil.runOnMain {
             guard let mv = self.mapView else { return }
             let cam = GMSCameraPosition(
                 target: CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng),
@@ -133,7 +133,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         guard !valid.isEmpty else { return }
         if valid.count == 1 {
             let single = valid[0]
-            runOnMain {
+            MapUtil.runOnMain {
                 let current = self.mapView?.camera
                 let zoom = self.clampZoom(current?.zoom ?? 15)
                 let cam = GMSCameraPosition(
@@ -146,7 +146,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
             }
             return
         }
-        runOnMain {
+        MapUtil.runOnMain {
             guard let mv = self.mapView else { return }
             var bounds = GMSCoordinateBounds()
             for p in valid {
@@ -171,51 +171,53 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
     }
 
     public func zoomIn() {
-        runOnMain {
+        MapUtil.runOnMain {
             guard let mv = self.mapView else { return }
             mv.animate(toZoom: self.clampZoom(mv.camera.zoom + 1))
         }
     }
 
     public func zoomOut() {
-        runOnMain {
+        MapUtil.runOnMain {
             guard let mv = self.mapView else { return }
             mv.animate(toZoom: self.clampZoom(mv.camera.zoom - 1))
         }
     }
 
     public func setZoom(zoom: Float) {
-        runOnMain { self.mapView?.animate(toZoom: self.clampZoom(zoom)) }
+        MapUtil.runOnMain { self.mapView?.animate(toZoom: self.clampZoom(zoom)) }
     }
 
+    /// Intentionally a no-op, mirroring the Android Google controller: `MapStyle.Url` is a MapLibre
+    /// GL style-spec URL (e.g. CARTO `positron-gl-style/style.json`), which the Google Maps SDK
+    /// cannot consume — Google takes its own JSON theme via ``setStyleJson(json:)`` only. A GL-style
+    /// URL on Google therefore leaves the default Google basemap, exactly as on Android.
     public func setStyleUrl(url: String) {
     }
 
+    /// Applies a Google Maps JSON theme (`MapStyle.InlineJson`). A nil parse result clears any theme
+    /// back to the default basemap rather than leaving a stale one.
     public func setStyleJson(json: String) {
-        runOnMain {
+        MapUtil.runOnMain {
             self.mapView?.mapStyle = (try? GMSMapStyle(jsonString: json))
         }
     }
 
     public func setColorScheme(isDark: Bool) {
-        runOnMain {
+        MapUtil.runOnMain {
             self.pendingIsDark = isDark
             self.applyColorScheme()
         }
     }
 
-    private func runOnMain(_ block: @escaping () -> Void) {
-        if Thread.isMainThread { block() } else { DispatchQueue.main.async(execute: block) }
-    }
-
     public func setInteractionEnabled(enabled: Bool) {
-        runOnMain {
+        MapUtil.runOnMain {
             self.interactionEnabled = enabled
             self.applyInteractionEnabled()
         }
     }
 
-    public func setPaddingPt(leftPt: Float, topPt: Float, rightPt: Float, bottomPt: Float) {
+    public func setPaddingPoints(leftPt: Float, topPt: Float, rightPt: Float, bottomPt: Float) {
         dispatchPrecondition(condition: .onQueue(.main))
         pendingPadding = UIEdgeInsets(
             top: CGFloat(topPt),
@@ -390,7 +392,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         followedRouteByMarker[markerId] = routeId
         // Re-seed only when the followed geometry changed; the model's setRoute re-projects the
         // current displayed point so the car does not jump on a refetched route.
-        if !Self.pointsEqual(seededRoutePoints[markerId], route.points) {
+        if !MapUtil.pointsEqual(seededRoutePoints[markerId], route.points) {
             seededRoutePoints[markerId] = route.points
             motion.setRoute(id: markerId, route: route.points)
         }
@@ -431,13 +433,6 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         }
     }
 
-    private static func pointsEqual(_ a: [GeoPoint]?, _ b: [GeoPoint]) -> Bool {
-        guard let a = a, a.count == b.count else { return false }
-        for i in 0..<a.count {
-            if abs(a[i].lat - b[i].lat) > 1e-7 || abs(a[i].lng - b[i].lng) > 1e-7 { return false }
-        }
-        return true
-    }
 
     private func renderRoutes(routes: [MapRoute]) {
         guard let map = mapView else { return }
@@ -450,7 +445,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
         for (id, route) in incoming {
             let previous = routeData[id]
             if let existing = renderedRoutes[id] {
-                if !Self.pointsEqual(previous?.points, route.points) {
+                if !MapUtil.pointsEqual(previous?.points, route.points) {
                     let path = GMSMutablePath()
                     for p in route.points { path.add(CLLocationCoordinate2D(latitude: p.lat, longitude: p.lng)) }
                     existing.path = path
@@ -479,7 +474,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
     private func reseedFollowedRoutes() {
         for (markerId, routeId) in followedRouteByMarker {
             guard let points = routeData[routeId]?.points else { continue }
-            if !Self.pointsEqual(seededRoutePoints[markerId], points) {
+            if !MapUtil.pointsEqual(seededRoutePoints[markerId], points) {
                 seededRoutePoints[markerId] = points
                 motion.setRoute(id: markerId, route: points)
             }
