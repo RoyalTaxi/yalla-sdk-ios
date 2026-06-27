@@ -11,6 +11,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     private var closed = false
 
     private var pendingMarkers: [MapMarker] = []
+    private var routeBindings: [String: String] = [:]
     private var pendingRoutes: [MapRoute] = []
     private var pendingPadding = UIEdgeInsets.zero
     private var lastEmittedCenter: CLLocationCoordinate2D?
@@ -271,6 +272,17 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         if mapView != nil { renderMarkers(markers: markers) }
     }
 
+    public func setRouteBindings(bindings: [String: String]) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard routeBindings != bindings else { return }
+        routeBindings = bindings
+        if mapView != nil {
+            for marker in markerData.values where marker.flat {
+                applyFollowedRoute(markerId: marker.id, marker: marker)
+            }
+        }
+    }
+
     public func setRoutes(routes: [MapRoute]) {
         dispatchPrecondition(condition: .onQueue(.main))
         pendingRoutes = routes
@@ -435,10 +447,17 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         }
     }
 
-    /// Glues a flat car marker to the route it declared via `followsRouteId`, or detaches it when
-    /// the declaration (or geometry) is gone/changed. Points come from the matching `MapRoute`.
+    /// Resolves the route a marker follows: a `setRouteBindings` entry wins over the deprecated
+    /// `MapMarker.followsRouteId` field, which remains a fallback for callers not yet migrated.
+    private func followedRouteId(for marker: MapMarker) -> String? {
+        return routeBindings[marker.id] ?? marker.followsRouteId
+    }
+
+    /// Glues a flat car marker to the route it follows, or detaches it when the binding (or
+    /// geometry) is gone/changed. Points come from the matching `MapRoute`. The followed route id
+    /// is resolved binding-first (see ``followedRouteId(for:)``).
     private func applyFollowedRoute(markerId: String, marker: MapMarker) {
-        guard let routeId = marker.followsRouteId,
+        guard let routeId = followedRouteId(for: marker),
               let route = routeData[routeId] ?? pendingRoutes.first(where: { $0.id == routeId }) else {
             if followedRouteByMarker.removeValue(forKey: markerId) != nil {
                 seededRoutePoints.removeValue(forKey: markerId)
