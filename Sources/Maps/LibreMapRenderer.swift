@@ -11,7 +11,6 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     private var closed = false
 
     private var pendingMarkers: [MapMarker] = []
-    private var routeBindings: [String: String] = [:]
     private var pendingRoutes: [MapRoute] = []
     private var pendingPadding = UIEdgeInsets.zero
     private var lastEmittedCenter: CLLocationCoordinate2D?
@@ -33,10 +32,15 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
     private var circleData: [String: MapCircle] = [:]
     private var circleSources: [String: MLNShapeSource] = [:]
     private var circleLayers: [String: MLNCircleStyleLayer] = [:]
-    // Flat ("car") markers that declared `followsRouteId`, mapped to that route id so the trimmed
-    // route from the motion model can be written back to the right line layer as the car eats it.
-    private var followedRouteByMarker: [String: String] = [:]
-    private var seededRoutePoints: [String: [GeoPoint]] = [:]
+    // Owns the marker<->route binding policy (which route a flat car marker follows + the re-seed
+    // cache) so the trimmed route from the motion model can be written back to the right line layer.
+    private lazy var followedRoutes = FollowedRouteCoordinator(
+        motion: motion,
+        routePoints: { [weak self] routeId in
+            self?.routeData[routeId]?.points ?? self?.pendingRoutes.first(where: { $0.id == routeId })?.points
+        },
+        renderedRoutePoints: { [weak self] routeId in self?.routeData[routeId]?.points }
+    )
     // Honesty-connector line layers (raw GPS -> snapped car) per flat marker, added only while the
     // model emits a connector for that marker and removed when it goes nil.
     private var connectorSources: [String: MLNShapeSource] = [:]
@@ -260,8 +264,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         markerImages.removeAll()
         sharedIconKeys.removeAll()
         sharedIconReuseIds.removeAll()
-        followedRouteByMarker.removeAll()
-        seededRoutePoints.removeAll()
+        followedRoutes.clear()
         carAnnotationViews.removeAll()
         lastMarkerViewBearing = nil
         userLocationAnnotation = nil
@@ -313,11 +316,10 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
 
     public func setRouteBindings(bindings: [String: String]) {
         dispatchPrecondition(condition: .onQueue(.main))
-        guard routeBindings != bindings else { return }
-        routeBindings = bindings
+        guard followedRoutes.updateBindings(bindings) else { return }
         if mapView != nil {
             for marker in markerData.values where marker.flat {
-                applyFollowedRoute(markerId: marker.id, marker: marker)
+                followedRoutes.applyFollow(marker: marker)
             }
         }
     }
@@ -365,8 +367,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         markerImages.removeAll()
         sharedIconKeys.removeAll()
         sharedIconReuseIds.removeAll()
-        followedRouteByMarker.removeAll()
-        seededRoutePoints.removeAll()
+        followedRoutes.clear()
         carAnnotationViews.removeAll()
         lastMarkerViewBearing = nil
         markerData.removeAll()
@@ -407,8 +408,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             sharedIconKeys.removeValue(forKey: id)
             carAnnotationViews.removeValue(forKey: id)
             removeConnector(markerId: id)
-            if followedRouteByMarker.removeValue(forKey: id) != nil {
-                seededRoutePoints.removeValue(forKey: id)
+            if followedRoutes.removeMarker(id) {
                 motion.setRoute(id: id, route: nil)
             }
         }
@@ -453,7 +453,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
                 renderedAnnotations[id] = ann
                 if marker.flat { motion.push(id: id, point: marker.point, routeHeading: marker.routeHeading?.floatValue, serverHeading: marker.rotation) }
             }
-            if marker.flat { applyFollowedRoute(markerId: id, marker: marker) }
+            if marker.flat { followedRoutes.applyFollow(marker: marker) }
             markerData[id] = marker
         }
         motion.retain(ids: Set(incoming.values.filter { $0.flat }.map { $0.id }))
@@ -484,35 +484,10 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
         }
     }
 
-    /// Resolves the route a marker follows: a `setRouteBindings` entry wins over the deprecated
-    /// `MapMarker.followsRouteId` field, which remains a fallback for callers not yet migrated.
-    private func followedRouteId(for marker: MapMarker) -> String? {
-        return routeBindings[marker.id] ?? marker.followsRouteId
-    }
-
-    /// Glues a flat car marker to the route it follows, or detaches it when the binding (or
-    /// geometry) is gone/changed. Points come from the matching `MapRoute`. The followed route id
-    /// is resolved binding-first (see ``followedRouteId(for:)``).
-    private func applyFollowedRoute(markerId: String, marker: MapMarker) {
-        guard let routeId = followedRouteId(for: marker),
-              let route = routeData[routeId] ?? pendingRoutes.first(where: { $0.id == routeId }) else {
-            if followedRouteByMarker.removeValue(forKey: markerId) != nil {
-                seededRoutePoints.removeValue(forKey: markerId)
-                motion.setRoute(id: markerId, route: nil)
-            }
-            return
-        }
-        followedRouteByMarker[markerId] = routeId
-        if !MapUtil.pointsEqual(seededRoutePoints[markerId], route.points) {
-            seededRoutePoints[markerId] = route.points
-            motion.setRoute(id: markerId, route: route.points)
-        }
-    }
-
     /// Writes the trimmed remaining route back onto the followed line layer so it visibly shrinks
     /// behind the car as it advances.
     private func applyRemainingRoute(markerId: String, points: [GeoPoint]) {
-        guard let routeId = followedRouteByMarker[markerId],
+        guard let routeId = followedRoutes.routeId(forMarker: markerId),
               let source = routeSources[routeId] else { return }
         if points.count < 2 {
             // Arrived (or degenerate): collapse the line to nothing rather than leaving a stub.
@@ -607,20 +582,7 @@ public final class LibreMapRenderer: NSObject, IosMapRenderer, MLNMapViewDelegat
             }
             routeData[id] = route
         }
-        reseedFollowedRoutes()
-    }
-
-    /// Re-seeds the motion model for any flat marker whose followed route geometry changed since
-    /// it was last seeded, so a route refetch arriving without a marker update still trims the
-    /// right line layer (setRoute re-projects, so the car does not jump).
-    private func reseedFollowedRoutes() {
-        for (markerId, routeId) in followedRouteByMarker {
-            guard let points = routeData[routeId]?.points else { continue }
-            if !MapUtil.pointsEqual(seededRoutePoints[markerId], points) {
-                seededRoutePoints[markerId] = points
-                motion.setRoute(id: markerId, route: points)
-            }
-        }
+        followedRoutes.reseedFollowedRoutes()
     }
 
     /// Renders geographic [MapCircle]s as MapLibre circle layers, mirroring the Android Libre
