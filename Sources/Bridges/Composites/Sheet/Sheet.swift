@@ -18,16 +18,22 @@ class Sheet: UIViewController {
     private var headerHeightConstraint: NSLayoutConstraint!
     private var footerZeroHeightConstraint: NSLayoutConstraint!
 
-    private var measuredHeight: CGFloat?
-    private var hasReportedContentHeight = false
+    /// Single source of truth for measured height + the custom detent. The three height writers
+    /// (`viewWillAppear`/`viewDidLayoutSubviews`/`updateContentHeight`) all funnel through it.
+    private lazy var detentController = SheetDetentController(sizesToContent: sizesToContent) { [weak self] animated in
+        guard let self, #available(iOS 16.0, *), let sheet = self.sheetPresentationController else { return }
+        if animated {
+            sheet.animateChanges { sheet.invalidateDetents() }
+        } else {
+            sheet.invalidateDetents()
+        }
+    }
 
     static let headerHeight: CGFloat = 72
     static let footerHeight: CGFloat = 80
     private static let footerButtonHeight: CGFloat = 64
     private static let footerInset: CGFloat = 8
     private static let footerHorizontalInset: CGFloat = 20
-
-    private static let contentDetentID = UISheetPresentationController.Detent.Identifier("content")
 
     init(dismissEnabled: Bool, sheetSwipeEnabled: Bool = true, sizesToContent: Bool = true, onDismissRequest: @escaping () -> Void) {
         self.dismissEnabled = dismissEnabled
@@ -49,23 +55,17 @@ class Sheet: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        hasReportedContentHeight = false
+        detentController.reset()
         if sizesToContent {
             view.layoutIfNeeded()
-            measuredHeight = preferredContentHeight()?.rounded()
+            detentController.seedInitialHeight(preferredContentHeight())
         }
         applySheetPresentation()
     }
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        guard sizesToContent,
-              let h = preferredContentHeight()?.rounded(),
-              h != measuredHeight else { return }
-        measuredHeight = h
-        if #available(iOS 16.0, *), let sheet = sheetPresentationController {
-            sheet.animateChanges { sheet.invalidateDetents() }
-        }
+        detentController.requestLayoutHeight(preferredContentHeight())
     }
 
     func updateContentHeight(_ contentHeight: CGFloat) {
@@ -73,20 +73,7 @@ class Sheet: UIViewController {
         let chrome = headerHeightConstraint.constant
             + (footerZeroHeightConstraint.isActive ? 0 : Self.footerHeight)
         let total = (contentHeight + chrome).rounded()
-        guard total != measuredHeight else { return }
-        measuredHeight = total
-        if #available(iOS 16.0, *) {
-            let animate = hasReportedContentHeight
-            hasReportedContentHeight = true
-            DispatchQueue.main.async { [weak self] in
-                guard let self, let sheet = self.sheetPresentationController else { return }
-                if animate {
-                    sheet.animateChanges { sheet.invalidateDetents() }
-                } else {
-                    sheet.invalidateDetents()
-                }
-            }
-        }
+        detentController.requestContentHeight(total)
     }
 
     func preferredContentHeight() -> CGFloat? { nil }
@@ -326,21 +313,11 @@ class Sheet: UIViewController {
         sheet.preferredCornerRadius = 28
         sheet.prefersScrollingExpandsWhenScrolledToEdge = false
         if #available(iOS 16.0, *) {
-            sheet.detents = makeDetents()
-            sheet.selectedDetentIdentifier = sizesToContent ? Self.contentDetentID : .large
+            sheet.detents = detentController.makeDetents()
+            sheet.selectedDetentIdentifier = sizesToContent ? SheetDetentController.contentDetentID : .large
         } else {
             sheet.detents = [.large()]
         }
-    }
-
-    @available(iOS 16.0, *)
-    private func makeDetents() -> [UISheetPresentationController.Detent] {
-        guard sizesToContent else { return [.large()] }
-        let content = UISheetPresentationController.Detent.custom(identifier: Self.contentDetentID) { [weak self] context in
-            guard let self, let h = self.measuredHeight else { return context.maximumDetentValue * 0.5 }
-            return min(h, context.maximumDetentValue)
-        }
-        return [content]
     }
 }
 
