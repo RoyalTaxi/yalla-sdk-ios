@@ -8,15 +8,18 @@ class Sheet: UIViewController {
     private let sizesToContent: Bool
     private let onDismissRequest: () -> Void
 
-    private let headerContainer = UIView()
-    private let contentContainer = UIView()
-    private let footerContainer = UIView()
+    /// The 3-band layout shell (header/content/footer containers + shadow/elevation). Installed as
+    /// the controller's `view` in `loadView()`.
+    private let scaffold = SheetScaffoldView()
+    private var headerContainer: UIView { scaffold.headerContainer }
+    private var contentContainer: UIView { scaffold.contentContainer }
+    private var footerContainer: UIView { scaffold.footerContainer }
+    private var headerHeightConstraint: NSLayoutConstraint { scaffold.headerHeightConstraint }
+    private var footerZeroHeightConstraint: NSLayoutConstraint { scaffold.footerZeroHeightConstraint }
+
     private let titleLabel = UILabel()
     private var closeHandle: IconButtonHandle?
     private weak var elevationScrollView: UIScrollView?
-
-    private var headerHeightConstraint: NSLayoutConstraint!
-    private var footerZeroHeightConstraint: NSLayoutConstraint!
 
     /// Single source of truth for measured height + the custom detent. The three height writers
     /// (`viewWillAppear`/`viewDidLayoutSubviews`/`updateContentHeight`) all funnel through it.
@@ -29,11 +32,8 @@ class Sheet: UIViewController {
         }
     }
 
-    static let headerHeight: CGFloat = 72
-    static let footerHeight: CGFloat = 80
-    private static let footerButtonHeight: CGFloat = 64
-    private static let footerInset: CGFloat = 8
-    private static let footerHorizontalInset: CGFloat = 20
+    static let headerHeight = SheetScaffoldView.headerHeight
+    static let footerHeight = SheetScaffoldView.footerHeight
 
     init(dismissEnabled: Bool, sheetSwipeEnabled: Bool = true, sizesToContent: Bool = true, onDismissRequest: @escaping () -> Void) {
         self.dismissEnabled = dismissEnabled
@@ -47,10 +47,13 @@ class Sheet: UIViewController {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) unavailable") }
 
+    override func loadView() {
+        view = scaffold
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = UIColor.yalla("background_base")
-        buildScaffold()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -218,57 +221,13 @@ class Sheet: UIViewController {
         footer.translatesAutoresizingMaskIntoConstraints = false
         footerContainer.addSubview(footer)
         NSLayoutConstraint.activate([
-            footer.topAnchor.constraint(equalTo: footerContainer.topAnchor, constant: Self.footerInset),
-            footer.leadingAnchor.constraint(equalTo: footerContainer.leadingAnchor, constant: Self.footerHorizontalInset),
-            footer.trailingAnchor.constraint(equalTo: footerContainer.trailingAnchor, constant: -Self.footerHorizontalInset),
-            footer.bottomAnchor.constraint(equalTo: footerContainer.bottomAnchor, constant: -Self.footerInset),
-            footer.heightAnchor.constraint(equalToConstant: Self.footerButtonHeight)
+            footer.topAnchor.constraint(equalTo: footerContainer.topAnchor, constant: SheetScaffoldView.footerInset),
+            footer.leadingAnchor.constraint(equalTo: footerContainer.leadingAnchor, constant: SheetScaffoldView.footerHorizontalInset),
+            footer.trailingAnchor.constraint(equalTo: footerContainer.trailingAnchor, constant: -SheetScaffoldView.footerHorizontalInset),
+            footer.bottomAnchor.constraint(equalTo: footerContainer.bottomAnchor, constant: -SheetScaffoldView.footerInset),
+            footer.heightAnchor.constraint(equalToConstant: SheetScaffoldView.footerButtonHeight)
         ])
         controller?.didMove(toParent: self)
-    }
-
-    private func buildScaffold() {
-        headerContainer.backgroundColor = UIColor.yalla("background_base")
-        footerContainer.backgroundColor = UIColor.yalla("background_base")
-        footerContainer.layer.cornerRadius = 38
-        footerContainer.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
-        footerContainer.layer.masksToBounds = true
-        contentContainer.clipsToBounds = true
-
-        contentContainer.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(contentContainer)
-        [headerContainer, footerContainer].forEach {
-            $0.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview($0)
-        }
-        configureShadow(headerContainer, yOffset: 3)
-        configureShadow(footerContainer, yOffset: -3)
-
-        headerHeightConstraint = headerContainer.heightAnchor.constraint(equalToConstant: 0)
-        footerZeroHeightConstraint = footerContainer.heightAnchor.constraint(equalToConstant: 0)
-
-        let footerSafeArea = footerContainer.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
-        footerSafeArea.priority = .defaultHigh
-
-        NSLayoutConstraint.activate([
-            contentContainer.topAnchor.constraint(equalTo: view.topAnchor),
-            contentContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            contentContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            contentContainer.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-
-            headerContainer.topAnchor.constraint(equalTo: view.topAnchor),
-            headerContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            headerContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            headerHeightConstraint,
-
-            footerContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            footerContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            footerContainer.bottomAnchor.constraint(lessThanOrEqualTo: view.keyboardLayoutGuide.topAnchor),
-            footerSafeArea,
-            footerZeroHeightConstraint
-        ])
-        view.bringSubviewToFront(headerContainer)
-        view.bringSubviewToFront(footerContainer)
     }
 
     private func pin(_ subview: UIView, size: CGFloat, top: CGFloat) {
@@ -278,27 +237,6 @@ class Sheet: UIViewController {
             subview.widthAnchor.constraint(equalToConstant: size),
             subview.heightAnchor.constraint(equalToConstant: size)
         ])
-    }
-
-    private func configureShadow(_ container: UIView, yOffset: CGFloat) {
-        container.layer.shadowColor = UIColor.black.cgColor
-        container.layer.shadowOffset = CGSize(width: 0, height: yOffset)
-        container.layer.shadowRadius = 4
-        container.layer.shadowOpacity = 0
-    }
-
-    private func updateElevation() {
-        guard let scrollView = elevationScrollView else { return }
-        let atTop = scrollView.contentOffset.y <= 0.5
-        let atBottom = scrollView.contentOffset.y + scrollView.bounds.height >= scrollView.contentSize.height - 0.5
-        setShadow(headerContainer, visible: !atTop)
-        setShadow(footerContainer, visible: !atBottom && !footerZeroHeightConstraint.isActive)
-    }
-
-    private func setShadow(_ container: UIView, visible: Bool) {
-        let target: Float = visible ? 0.08 : 0
-        guard container.layer.shadowOpacity != target else { return }
-        container.layer.shadowOpacity = target
     }
 
     private func configurePresentation() {
@@ -322,7 +260,10 @@ class Sheet: UIViewController {
 }
 
 extension Sheet: UIScrollViewDelegate {
-    func scrollViewDidScroll(_ scrollView: UIScrollView) { updateElevation() }
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        guard let elevationScrollView else { return }
+        scaffold.updateElevation(for: elevationScrollView)
+    }
 }
 
 extension Sheet: UISheetPresentationControllerDelegate {
