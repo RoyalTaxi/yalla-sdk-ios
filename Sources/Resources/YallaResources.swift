@@ -6,6 +6,7 @@ import UIKit
 import AppKit
 #endif
 
+/// Native iOS resource accessors generated from the canonical Yalla resources.
 public enum YallaResources {
     public static let bundle = Bundle.module
 

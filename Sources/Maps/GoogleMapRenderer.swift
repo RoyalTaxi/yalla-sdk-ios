@@ -34,7 +34,7 @@ public final class GoogleMapRenderer: NSObject, IosMapRenderer, GMSMapViewDelega
     /// the SDK (see yalla-sdk ADR 0003).
     public let routeFollowingEnabled: Bool
     private lazy var motion = MarkerMotionDriver(
-        mode: routeFollowingEnabled ? MotionMode.RouteFollowing.shared : MotionMode.ChordOnly.shared,
+        mode: routeFollowingEnabled ? MotionModeRouteFollowing.shared : MotionModeChordOnly.shared,
         onFrame: { [weak self] poses in self?.applyMarkerPoses(poses) },
         onRoute: { [weak self] markerId, points in self?.applyRemainingRoute(markerId: markerId, points: points) },
         onConnector: { [weak self] markerId, connector in self?.applyConnector(markerId: markerId, connector: connector) }

@@ -1,0 +1,13 @@
+{
+  "info": {
+    "author": "xcode",
+    "version": 1
+  },
+  "images": [
+    {
+      "idiom": "universal",
+      "filename": "ic_intercity_taxi.svg",
+      "preserves-vector-data": true
+    }
+  ]
+}

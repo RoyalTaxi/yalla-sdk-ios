@@ -43,7 +43,7 @@ final class MarkerMotionDriver: NSObject {
         onRoute: ((String, [GeoPoint]) -> Void)? = nil,
         onConnector: ((String, RouteConnector?) -> Void)? = nil
     ) {
-        self.routeFollowingEnabled = mode is MotionMode.RouteFollowing
+        self.routeFollowingEnabled = mode is MotionModeRouteFollowing
         self.onFrame = onFrame
         self.onRoute = onRoute
         self.onConnector = onConnector
