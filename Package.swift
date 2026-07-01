@@ -20,15 +20,7 @@ let package = Package(
         .library(
             name: "Bridges",
             targets: ["Bridges"]
-        ),
-        .library(
-            name: "Maps",
-            targets: ["Maps"]
         )
-    ],
-    dependencies: [
-        .package(url: "https://github.com/googlemaps/ios-maps-sdk", from: "10.0.0"),
-        .package(url: "https://github.com/maplibre/maplibre-gl-native-distribution.git", from: "6.0.0")
     ],
     targets: [
         .binaryTarget(
@@ -55,24 +47,6 @@ let package = Package(
                 "YallaComponents"
             ],
             path: "Sources/Bridges"
-        ),
-        .target(
-            name: "Maps",
-            dependencies: [
-                "YallaComponents",
-                "Resources",
-                .product(name: "GoogleMaps", package: "ios-maps-sdk"),
-                .product(name: "MapLibre", package: "maplibre-gl-native-distribution")
-            ],
-            path: "Sources/Maps"
-        ),
-        .testTarget(
-            name: "MapsTests",
-            dependencies: [
-                "Maps",
-                "YallaComponents"
-            ],
-            path: "Tests/MapsTests"
         ),
         .testTarget(
             name: "BridgesTests",
