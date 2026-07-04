@@ -8532,6 +8532,876 @@
           }
         }
       }
+    },
+    "intercity_setup_fastest_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iloji boricha tezroq"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As fast as possible"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Как можно быстрее"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Иложи борича тезроқ"
+          }
+        }
+      }
+    },
+    "intercity_setup_fastest_subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "So'rovingizga mos taksini imkon qadar tez topamiz"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We will find a taxi for your request as fast as possible"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мы подберем вам такси по вашим запросам как можно быстрее"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сўровингизга мос таксини имкон қадар тез топамиз"
+          }
+        }
+      }
+    },
+    "intercity_setup_schedule_placeholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sana va vaqtni tanlang"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select date and time"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите дату и время"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сана ва вақтни танланг"
+          }
+        }
+      }
+    },
+    "intercity_setup_schedule_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Safar vaqti:"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trip time:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Время поездки:"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сафар вақти:"
+          }
+        }
+      }
+    },
+    "intercity_schedule_picker_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Safar vaqti va sanasi"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trip time and date"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Время и дата поездки"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сафар вақти ва санаси"
+          }
+        }
+      }
+    },
+    "intercity_setup_whole_cabin": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Butun salon"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whole cabin"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Весь салон"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Бутун салон"
+          }
+        }
+      }
+    },
+    "intercity_setup_select_seat": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Joyni tanlang"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select seat"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите место"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Жойни танланг"
+          }
+        }
+      }
+    },
+    "intercity_setup_seat_summary": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siz %1$@ ta joy tanladingiz"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You selected %1$@ seats"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вы выбрали %1$@ мест"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сиз %1$@ та жой танладингиз"
+          }
+        }
+      }
+    },
+    "intercity_setup_total_amount": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jami summa"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total amount"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Итоговая сумма"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Жами сумма"
+          }
+        }
+      }
+    },
+    "intercity_setup_postal_select": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pochtani tanlang"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select posts"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите почту"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Почтани танланг"
+          }
+        }
+      }
+    },
+    "intercity_setup_preferences_select": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qo'shimcha imkoniyatlarni tanlang"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select preferences"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите опции"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Қўшимча имкониятларни танланг"
+          }
+        }
+      }
+    },
+    "intercity_setup_preferences_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qo'shimcha imkoniyatlar"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preferences"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Опции"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Қўшимча имкониятлар"
+          }
+        }
+      }
+    },
+    "intercity_setup_trip": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Safarni sozlash"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trip setup"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Настройка поездки"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сафарни созлаш"
+          }
+        }
+      }
+    },
+    "intercity_setup_transport_discard_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O'zgarishlarni bekor qilasizmi?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discard changes?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отменить изменения?"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ўзгаришларни бекор қиласизми?"
+          }
+        }
+      }
+    },
+    "intercity_setup_transport_discard_message": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transport turini almashtirish joriy tanlovni tozalaydi. Davom etasizmi?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switching transport will clear your current selection. Continue?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Смена транспорта очистит текущий выбор. Продолжить?"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Транспорт турини алмаштириш жорий танловни тозалайди. Давом этасизми?"
+          }
+        }
+      }
+    },
+    "intercity_setup_transport_discard_confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bekor qilish"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discard"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сброс"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Бекор қилиш"
+          }
+        }
+      }
+    },
+    "intercity_schedule_section_now": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hozir"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Now"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сейчас"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ҳозир"
+          }
+        }
+      }
+    },
+    "intercity_schedule_section_today": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bugun"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сегодня"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Бугун"
+          }
+        }
+      }
+    },
+    "intercity_schedule_section_tomorrow": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ertaga"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tomorrow"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завтра"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эртага"
+          }
+        }
+      }
+    },
+    "intercity_seat_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O'rindiqlarni tanlang"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select seats"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите места"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ўриндиқларни танланг"
+          }
+        }
+      }
+    },
+    "intercity_seat_passenger": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@-yo'lovchi"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passenger %1$@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пассажир %1$@"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@-йўловчи"
+          }
+        }
+      }
+    },
+    "intercity_seat_position_front_right": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oldda, o'ngda"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Front, right"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Спереди, справа"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Олдда, ўнгда"
+          }
+        }
+      }
+    },
+    "intercity_seat_position_back_left": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orqada, chapda"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back, left"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сзади, слева"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Орқада, чапда"
+          }
+        }
+      }
+    },
+    "intercity_seat_position_back_center": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orqada, o'rtada"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back, center"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сзади, в центре"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Орқада, ўртада"
+          }
+        }
+      }
+    },
+    "intercity_seat_position_back_right": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orqada, o'ngda"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back, right"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сзади, справа"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Орқада, ўнгда"
+          }
+        }
+      }
+    },
+    "intercity_seat_price_note": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O'rindiq narxi buyurtma tasdiqlangach o'zgarishi mumkin"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seat prices may change after the trip is confirmed"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Стоимость места может измениться после подтверждения поездки"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ўриндиқ нархи буюртма тасдиқлангач ўзгариши мумкин"
+          }
+        }
+      }
+    },
+    "intercity_seat_selected_count": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ ta o'rindiq tanlandi"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ seats selected"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбрано мест: %1$@"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ та ўриндиқ танланди"
+          }
+        }
+      }
+    },
+    "intercity_seat_total": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umumiy summa"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total amount"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Итоговая сумма"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Умумий сумма"
+          }
+        }
+      }
+    },
+    "intercity_seat_whole_back_row": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Butun orqa qator"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whole back row"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Весь задний ряд"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Бутун орқа қатор"
+          }
+        }
+      }
+    },
+    "intercity_seat_confirm_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yo'lovchilarni tasdiqlang"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirm passengers"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подтвердите пассажиров"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Йўловчиларни тасдиқланг"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
