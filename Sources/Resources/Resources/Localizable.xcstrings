@@ -4473,6 +4473,35 @@
         }
       }
     },
+    "bonus_you_pay": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siz %1$@ to'laysiz"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You pay %1$@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вы платите %1$@"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сиз %1$@ тўлайсиз"
+          }
+        }
+      }
+    },
     "bonus_pay_for_next_trip": {
       "extractionState": "manual",
       "localizations": {
@@ -7576,7 +7605,7 @@
         }
       }
     },
-    "service_mail": {
+    "service_postal": {
       "extractionState": "manual",
       "localizations": {
         "uz-Latn": {
@@ -7588,7 +7617,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mail"
+            "value": "Postal"
           }
         },
         "ru": {
@@ -8800,25 +8829,54 @@
         "uz-Latn": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pochtani tanlang"
+            "value": "Pochta turini tanlang"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Select posts"
+            "value": "Select postal type"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Выберите почту"
+            "value": "Выберите тип почты"
           }
         },
         "uz-Cyrl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Почтани танланг"
+            "value": "Почта турини танланг"
+          }
+        }
+      }
+    },
+    "intercity_setup_postal_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "uz-Latn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pochta turi:"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Postal type:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тип почты:"
+          }
+        },
+        "uz-Cyrl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Почта тури:"
           }
         }
       }
